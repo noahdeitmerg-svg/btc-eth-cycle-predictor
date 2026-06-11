@@ -12,11 +12,12 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / "public" / "data"
 
 ENV = {}
-for line in (ROOT / ".env").read_text(encoding="utf-8").splitlines():
-    line = line.strip()
-    if line and not line.startswith("#") and "=" in line:
-        k, v = line.split("=", 1); ENV[k.strip()] = v.strip()
-CG_KEY = ENV.get("COINGECKO_API_KEY", "")
+if (ROOT / ".env").exists():
+    for line in (ROOT / ".env").read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1); ENV[k.strip()] = v.strip()
+CG_KEY = ENV.get("COINGECKO_API_KEY", "") or os.environ.get("COINGECKO_API_KEY", "")
 
 def get(url, headers=None):
     req = urllib.request.Request(url, headers=headers or {})
