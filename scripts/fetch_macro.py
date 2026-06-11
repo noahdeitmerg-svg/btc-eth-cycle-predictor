@@ -6,10 +6,11 @@ import json, urllib.request, urllib.parse, datetime, pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 ENV = {}
-for line in (ROOT / ".env").read_text(encoding="utf-8").splitlines():
-    line = line.strip()
-    if line and not line.startswith("#") and "=" in line:
-        k, v = line.split("=", 1); ENV[k.strip()] = v.strip()
+if (ROOT / ".env").exists():
+    for line in (ROOT / ".env").read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1); ENV[k.strip()] = v.strip()
 KEY = ENV.get("FRED_API_KEY", "") or __import__("os").environ.get("FRED_API_KEY", "")
 if not KEY:
     raise SystemExit("FRED_API_KEY fehlt in .env")
