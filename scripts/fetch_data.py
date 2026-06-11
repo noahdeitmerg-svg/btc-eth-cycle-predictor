@@ -38,7 +38,7 @@ def coingecko_tail_weekly(coin):
     return [[wk, round(w["o"], 4), round(w["h"], 4), round(w["l"], 4), round(w["c"], 4), round(w["v"])]
             for wk, w in sorted(weeks.items()) if w["c"] > 0]
 
-for sym, coin in (("BTC", "bitcoin"), ("ETH", "ethereum"), ("SOL", "solana")):
+for sym, coin in (("BTC", "bitcoin"), ("ETH", "ethereum")):
     f = OUT / f"{sym.lower()}_weekly.json"
     if f.exists():
         snap = json.load(open(f))
