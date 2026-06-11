@@ -1,7 +1,7 @@
 /* Service Worker: App-Shell cache-first, Daten network-first (frisch wenn online, offline aus Cache). */
-const SHELL = 'shell-v1';
+const SHELL = 'shell-v2';
 const DATA = 'data-v1';
-const SHELL_FILES = ['./', 'index.html', 'src/analytics.js', 'src/app.live.js', 'vendor/chart.umd.min.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png'];
+const SHELL_FILES = ['./', 'index.html', 'src/analytics.js', 'src/app.live.js', 'src/i18n.js', 'vendor/chart.umd.min.js', 'vendor/hammer.min.js', 'vendor/chartjs-plugin-zoom.min.js', 'vendor/chartjs-chart-financial.min.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(SHELL).then(c => c.addAll(SHELL_FILES)).then(() => self.skipWaiting()));

@@ -202,7 +202,7 @@ function renderMacro(macro, cycles) {
 async function init() {
   try {
     const loaded = await Promise.all([
-      loadJSON('data/btc_weekly.json'), loadJSON('data/eth_weekly.json'), loadJSON('data/backtest_results.json'), loadOptional('data/macro_data.json')
+      loadJSON('data/btc_weekly.json'), loadJSON('data/eth_weekly.json'), loadJSON('data/backtest_results.json'), loadOptional('data/macro_data.json'), loadOptional('data/sol_weekly.json')
     ]);
     const btcJ = loaded[0], ethJ = loaded[1], btJ = loaded[2], macro = loaded[3];
     const btc = A.parseSeries(btcJ), eth = A.parseSeries(ethJ);
@@ -283,6 +283,18 @@ async function init() {
       renderElliott('ethElliott', eth, ewE, 'Ethereum', COL.green);
       $('elliott-eth-text').innerHTML = '<strong>ETH: ' + ewE.phase + '</strong> — ' + fmtPct(ewE.retracedNow * 100) + ' zurückgegeben (kurze Datenhistorie: Zählung beginnt ' + A.fmtDate(ewE.impulse[0].t) + '). Fib-Ziele: 0,618 = ' + fmtK(ewE.fibs[0.618]) + ' · 0,786 = ' + fmtK(ewE.fibs[0.786]) + '. Zählung ungültig über ' + fmtK(ewE.invalidation) + '.';
     }
+    // SOL: Status + Chart, bewusst ohne Prognose (zu kurze Historie)
+    const solJ = loaded[4];
+    if (solJ && solJ.data && solJ.data.length > 10) {
+      const sol = A.parseSeries(solJ);
+      const lastS = sol[sol.length - 1];
+      const hi52 = Math.max.apply(null, sol.map(p => p.h));
+      const lo52 = Math.min.apply(null, sol.map(p => p.l));
+      $('sol-price').textContent = lastS.c.toLocaleString('de-DE', { maximumFractionDigits: 2 }) + ' $';
+      $('sol-range').textContent = hi52.toLocaleString('de-DE', { maximumFractionDigits: 0 }) + ' $ / ' + lo52.toLocaleString('de-DE', { maximumFractionDigits: 0 }) + ' $';
+      $('sol-dd').textContent = '−' + fmtPct((1 - lastS.c / hi52) * 100);
+      mkChart('solChart', { type: 'line', data: { labels: sol.map(p => A.fmtDate(p.t)), datasets: [{ label: 'Solana Wochenschluss', data: sol.map(p => p.c), borderColor: COL.amber, borderWidth: 2, pointRadius: 0, tension: 0.2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: legendTitle('Solana — letzte ~52 Wochen (mehr Historie gibt der Datenzugang nicht her)'), scales: axStyle() } });
+    }
     setupModeToggles();
     setupTheme();
     renderCycleComparison('cycleChart', btc);
@@ -296,6 +308,7 @@ async function init() {
     }
     $('last-update').textContent = btcJ.fetched;
     $('loading').style.display = 'none';
+    if (window.applyLang) window.applyLang();
   } catch (err) {
     console.error(err);
     $('loading').textContent = 'Fehler beim Laden: ' + err.message + ' — Seite über http aufrufen (python -m http.server), file:// blockiert fetch.';

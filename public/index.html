@@ -128,6 +128,7 @@
       <span class="pill ok" id="live-badge">lade…</span>
       <button class="pill" id="notify-btn" style="cursor:pointer">Alarm aktivieren</button>
       <button class="pill" id="theme-btn" style="cursor:pointer">Hell</button>
+      <button class="pill" id="lang-btn" style="cursor:pointer">EN (Beta)</button>
       <span class="meta">Zyklusstruktur · Bewertung · Halving-Muster · Makro (FRED) · walk-forward backtested</span>
     </div>
 
@@ -207,6 +208,17 @@
         <button class="fullscreen-btn" id="eth-mode">Kerzen</button>
         <div class="chart-container"><canvas id="ethChart"></canvas></div>
       </div>
+    </div>
+
+    <div class="card full">
+      <span class="kicker">Beobachtung</span>
+      <h2>Solana — nur zur Einordnung</h2>
+      <div class="sub">Bewusst OHNE Kernzone und Prognose: Über den Datenzugang gibt es nur ~365 Tage Historie, und SOL hat ohnehin erst einen vollständigen Zyklus — jede „Prognose" wäre Scheinpräzision.</div>
+      <div class="metric"><span>Aktueller Kurs</span><span class="metric-value" id="sol-price">—</span></div>
+      <div class="metric"><span>52-Wochen-Hoch / -Tief</span><span class="metric-value" id="sol-range">—</span></div>
+      <div class="metric"><span>Abstand vom 52W-Hoch</span><span class="metric-value" id="sol-dd">—</span></div>
+      <button class="fullscreen-btn" onclick="fullscreenChart('solChart')" style="margin-top:10px">Vollbild</button>
+      <div class="chart-container"><canvas id="solChart"></canvas></div>
     </div>
 
     <div class="card full">
@@ -308,6 +320,7 @@
 
   <script src="src/analytics.js"></script>
   <script src="src/app.live.js"></script>
+  <script src="src/i18n.js"></script>
   <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
 </body>
 </html>

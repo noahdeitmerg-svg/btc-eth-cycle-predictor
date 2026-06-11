@@ -38,12 +38,18 @@ def coingecko_tail_weekly(coin):
     return [[wk, round(w["o"], 4), round(w["h"], 4), round(w["l"], 4), round(w["c"], 4), round(w["v"])]
             for wk, w in sorted(weeks.items()) if w["c"] > 0]
 
-for sym, coin in (("BTC", "bitcoin"), ("ETH", "ethereum")):
+for sym, coin in (("BTC", "bitcoin"), ("ETH", "ethereum"), ("SOL", "solana")):
     f = OUT / f"{sym.lower()}_weekly.json"
-    snap = json.load(open(f))
+    if f.exists():
+        snap = json.load(open(f))
+    else:
+        # SOL: kein Langzeit-Snapshot verfuegbar (Demo-Key = max 365 Tage) -> frisch anlegen
+        snap = {"symbol": sym, "interval": "weekly", "unit": "USD", "source": "CoinGecko Demo (365 Tage)",
+                "fields": ["time", "open", "high", "low", "close", "volume_usd"],
+                "note": "Nur ~365 Tage Historie - zu kurz fuer Zyklus-Aussagen.", "data": []}
     base_rows = {r[0]: r for r in snap["data"]}
     n_before = len(base_rows)
-    last_before = max(base_rows)
+    last_before = max(base_rows) if base_rows else 0
     if CG_KEY:
         fresh = coingecko_tail_weekly(coin)
         for r in fresh:
