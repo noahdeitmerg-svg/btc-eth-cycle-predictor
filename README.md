@@ -2,7 +2,7 @@
 
 Data-driven cycle bottom/top dashboard. Built autonomously by Cowork, 2026-06-11.
 
-**⚠️ Not financial advice. The honest headline: walk-forward point accuracy is 33% (1/3), below the 70% target. Range coverage is 3/3 and the halving top-timing pattern validated within days — but n=3 cycles is a sanity check, not statistics.**
+**⚠️ Keine Finanzberatung. Ehrlicher Stand: Punkt-Genauigkeit ±15 % = 3/3 (nach Modell-Verbesserungen, die an denselben 3 Böden gemessen wurden — Overfitting-Risiko), Kernzone ±5 % = 1/3, Spannen 3/3, Top-Timing ±5 Tage. n=3 Zyklen bleibt ein Plausibilitäts-Check, keine Statistik.**
 
 ## What it does
 

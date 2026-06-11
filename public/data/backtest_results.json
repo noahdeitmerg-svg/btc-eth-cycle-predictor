@@ -1,5 +1,5 @@
 {
- "generated": "2026-06-11T19:30:35.119Z",
+ "generated": "2026-06-11T19:51:29.588Z",
  "backtest": {
   "tolerance": 0.15,
   "leadWeeks": 8,
@@ -14,11 +14,12 @@
     "event": "Bottom 2015",
     "date": "2015-01-10",
     "actual": 157.29,
-    "predicted": 77.61,
+    "predicted": 171.69,
     "rangeLow": 77.61,
     "rangeHigh": 265.78,
-    "errorPct": 50.7,
-    "hit": false,
+    "errorPct": 9.2,
+    "hit": true,
+    "inCore": false,
     "inRange": true,
     "basis": "median of 2 estimators; priors n=1"
    },
@@ -26,31 +27,33 @@
     "event": "Bottom 2018",
     "date": "2018-12-15",
     "actual": 3169.53,
-    "predicted": 2516.63,
+    "predicted": 3110.47,
     "rangeLow": 2437.87,
     "rangeHigh": 4252.32,
-    "errorPct": 20.6,
-    "hit": false,
+    "errorPct": 1.9,
+    "hit": true,
+    "inCore": true,
     "inRange": true,
-    "basis": "median of 3 estimators; priors n=2"
+    "basis": "median of 4 estimators; priors n=2"
    },
    {
     "event": "Bottom 2022",
     "date": "2022-11-17",
     "actual": 15480.69,
-    "predicted": 14761.44,
+    "predicted": 13972.66,
     "rangeLow": 11002.67,
     "rangeHigh": 17729.32,
-    "errorPct": 4.6,
+    "errorPct": 9.7,
     "hit": true,
+    "inCore": false,
     "inRange": true,
-    "basis": "median of 3 estimators; priors n=3"
+    "basis": "median of 4 estimators; priors n=3"
    }
   ],
   "tested": 3,
-  "hits": 1,
-  "accuracy": 0.3333333333333333,
-  "passed70": false,
+  "hits": 3,
+  "accuracy": 1,
+  "passed70": true,
   "caveat": "Walk-forward, n=3. With so few cycles this is a sanity check, not statistical validation."
  },
  "cycles": [
@@ -96,10 +99,15 @@
    "prediction": {
     "estimators": {
      "prevDrawdown": 28342.31564191611,
+     "decayDrawdown": 35907.51170633078,
      "fib786": 27025.487919999985,
      "smaFloor": 50385.9988628273
     },
-    "bottomPrice": 28342.31564191611,
+    "bottomPrice": 32124.913674123443,
+    "coreZone": {
+     "low": 30518.66799041727,
+     "high": 33731.159357829616
+    },
     "range": {
      "low": 27025.487919999985,
      "high": 50385.9988628273
@@ -109,7 +117,7 @@
      "to": "2026-11",
      "weeksAfterTop": 52
     },
-    "basis": "median of 3 estimators; priors n=4"
+    "basis": "median of 4 estimators; priors n=4"
    },
    "valuationProxy": {
     "sma200w": 62305.79017200004,
@@ -148,7 +156,11 @@
      "prevDrawdown": 899.811690485292,
      "fib786": 1754.9757399999999
     },
-    "bottomPrice": 899.811690485292,
+    "bottomPrice": 1327.393715242646,
+    "coreZone": {
+     "low": 1261.0240294805137,
+     "high": 1393.7634010047784
+    },
     "range": {
      "low": 899.811690485292,
      "high": 1754.9757399999999

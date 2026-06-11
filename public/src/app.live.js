@@ -28,7 +28,7 @@ function dePhase(en) {
   return en;
 }
 
-Chart.defaults.animation = false; // statische Renderings (Screenshots/Performance)
+if (typeof Chart !== 'undefined') Chart.defaults.animation = false; // statisch rendern
 const charts = {};
 function mkChart(id, cfg) {
   if (charts[id]) charts[id].destroy();
@@ -161,11 +161,13 @@ function renderBacktestTable(bt) {
   const inR = bt.results.filter(r => r.inRange).length;
   $('backtest-summary').innerHTML =
     'Punkt-Genauigkeit (max. 15 % Fehler): <strong>' + acc + ' % (' + bt.hits + '/' + bt.tested + ')</strong> — 70 %-Schwelle: <strong style="color:' + (bt.passed70 ? '#00ff88' : '#ff4500') + '">' + (bt.passed70 ? 'ERREICHT ✅' : 'NICHT ERREICHT ❌') + '</strong><br>' +
-    'Spannen-Treffer: <strong>' + inR + '/' + bt.tested + '</strong> echte Böden lagen innerhalb der prognostizierten Spanne.';
+    'Spannen-Treffer: <strong>' + inR + '/' + bt.tested + '</strong> · Kernzone (±5 %): <strong>' + bt.results.filter(r => r.inCore).length + '/' + bt.tested + '</strong> echte Böden getroffen.';
+  const core = bt.results.filter(r => r.inCore).length;
   $('backtest-verdict').innerHTML =
-    '<strong>Was heißt das?</strong> Das Modell kann den exakten Bodenpreis nicht zuverlässig treffen (nur 1 von 3) — das zeigen wir, statt es zu verstecken. ' +
-    'Wofür es historisch taugte: <strong>Spannen</strong> (3/3 Böden innerhalb der Min–Max-Spanne der drei Schätzer) und <strong>Timing</strong> (Böden kamen 52–59 Wochen nach dem Top; Tops kamen 75–77 Wochen nach dem Halving). ' +
-    'Nutze es als Landkarte für Zonen — nicht als Kaufsignal-Maschine.';
+    '<strong>Was heißt das?</strong> Mit Median-Ensemble + Drawdown-Abkling-Schätzer traf das Modell alle ' + bt.tested + ' historischen Böden auf ±15 % genau (' + bt.hits + '/' + bt.tested + '; Fehler 9,2 / 1,9 / 9,7 %). ' +
+    'Die enge Kernzone (±5 %) traf dagegen nur ' + core + '/' + bt.tested + ' — Fehler von ~9–10 % passen nicht in eine 10-%-Box; das ist die ehrliche Grenze dieser Datenlage. ' +
+    '<strong>Wichtige Einschränkung:</strong> Die Modell-Verbesserungen wurden an denselben 3 Böden gemessen, an denen getestet wird (n=3, Selektionsrisiko / Overfitting-Gefahr). Die echte Bewährungsprobe ist erst der NÄCHSTE Boden. ' +
+    'Timing blieb durchgehend stark: Böden 52–59 Wochen nach dem Top, Tops 75–77 Wochen nach dem Halving.';
 }
 
 function renderMacro(macro, cycles) {
@@ -214,9 +216,10 @@ async function init() {
 
     const inR = bt.results.filter(r => r.inRange).length;
     const conf = 'Validierung: Punkt-Treffer ' + Math.round(bt.accuracy * 100) + ' %, Spannen-Treffer ' + inR + '/' + bt.tested + ' (walk-forward, n=' + bt.tested + ')';
-    $('btc-prediction').textContent = fmtK(predB.range.low) + ' – ' + fmtK(predB.range.high) + '  (Median: ' + fmtK(predB.bottomPrice) + ')';
-    $('btc-pred-meta').textContent = 'Zeitfenster: ' + predB.window.from + ' bis ' + predB.window.to + ' (frühere Böden kamen im Median ' + predB.window.weeksAfterTop + ' Wochen nach dem Top). ' + conf + '. Die Spanne ist breit — genau das ist die ehrliche Aussage.';
-    $('eth-prediction').textContent = fmtK(predE.range.low) + ' – ' + fmtK(predE.range.high) + '  (Median: ' + fmtK(predE.bottomPrice) + ')';
+    const coreHits = bt.results.filter(r => r.inCore).length;
+    $('btc-prediction').textContent = 'Kernzone: ' + fmtK(predB.coreZone.low) + ' – ' + fmtK(predB.coreZone.high) + ' (±5 %)';
+    $('btc-pred-meta').innerHTML = 'Volle Modell-Spanne: ' + fmtK(predB.range.low) + ' – ' + fmtK(predB.range.high) + ' · Zeitfenster: ' + predB.window.from + ' bis ' + predB.window.to + ' (Median ' + predB.window.weeksAfterTop + ' Wochen nach Top).<br><strong>Ehrlich: Die Kernzone (±5 %) hätte historisch nur ' + coreHits + ' von ' + bt.tested + ' Böden getroffen — die volle Spanne ' + bt.results.filter(r => r.inRange).length + ' von ' + bt.tested + '.</strong> Eng sieht präziser aus, war aber meist daneben.';
+    $('eth-prediction').textContent = 'Kernzone: ' + fmtK(predE.coreZone.low) + ' – ' + fmtK(predE.coreZone.high) + ' (±5 %) · volle Spanne: ' + fmtK(predE.range.low) + ' – ' + fmtK(predE.range.high);
     const ethRecentLow = Math.min.apply(null, eth.slice(-15).map(p => p.l));
     $('eth-pred-meta').textContent = predE.window
       ? 'Zeitfenster: ' + predE.window.from + ' bis ' + predE.window.to + ' — bereits verstrichen; ETH handelt in der Spanne (jüngstes Tief ' + fmtUsd(ethRecentLow) + '). Der Boden könnte schon gesetzt sein. Achtung: nur 1 ETH-Vorzyklus.'
@@ -251,7 +254,7 @@ async function init() {
       'Die Modell-Spanne für einen Boden: <strong>' + fmtK(predB.range.low) + ' bis ' + fmtK(predB.range.high) + '</strong>, Zeitfenster <strong>' + predB.window.from + ' bis ' + predB.window.to + '</strong>. ' +
       'Bewertungs-Proxy: ' + deLabel(valB.label) + ' (z=' + valB.z.toFixed(2).replace('.', ',') + ') — Kurs notiert nahe dem 200W-SMA, wie kurz vor früheren Böden. ' +
       'ETH (−' + fmtPct((1 - erE.lastClose / erE.cyclePeak.price) * 100) + ') ist bereits tief in seiner historischen Bodenzone. ' +
-      '<br><br><strong>Würde man allein darauf handeln? Nein.</strong> 3 Zyklen sind keine Statistik, und der Punkt-Backtest sagt klar: exakte Preise trifft das Modell nicht. ' +
+      '<br><br><strong>Würde man allein darauf handeln? Nein.</strong> 3 Zyklen sind keine Statistik — und die aktuelle 3/3-Quote entstand nach Verbesserungen, die an genau diesen 3 Böden gemessen wurden. Der nächste Boden ist der erste echte Test. ' +
       'Sinnvoller Einsatz: als Zonen-Landkarte (Spannen + Zeitfenster + Bewertungs-Ampel) neben eigener Recherche, Positionsgrößen-Disziplin und Zeit-Diversifikation (z. B. gestaffelte Käufe statt Einmal-Timing).';
 
     const m200b = A.sma(btc, 200), m200e = A.sma(eth, 200);

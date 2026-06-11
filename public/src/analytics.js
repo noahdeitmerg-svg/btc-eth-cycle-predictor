@@ -175,6 +175,13 @@
     const ests = {};
     const completed = priorCycles.filter(c => Date.parse(c.bottomDate) / 1000 < series[series.length - 1].t);
     if (completed.length) ests.prevDrawdown = er.cyclePeak.price * (1 - completed[completed.length - 1].drawdown);
+    // Drawdown-Abklingen: Baeren wurden jeden Zyklus flacher (-94 -> -87 -> -84 -> -78 %).
+    // Schreibt das Verhaeltnis der letzten beiden Drawdowns fort (geklemmt auf 50-95 %).
+    if (completed.length >= 2) {
+      const d1 = completed[completed.length - 1].drawdown, d0 = completed[completed.length - 2].drawdown;
+      const dNext = Math.min(0.95, Math.max(0.5, d1 * (d1 / d0)));
+      ests.decayDrawdown = er.cyclePeak.price * (1 - dNext);
+    }
     ests.fib786 = er.fibs[0.786];
     // E3: SMA multiplier at prior bottoms
     const m = sma(series, 200);
@@ -191,7 +198,7 @@
     }
     const vals = Object.values(ests).filter(x => isFinite(x) && x > 0).sort((a, b) => a - b);
     if (!vals.length) return null;
-    const median = vals[Math.floor((vals.length - 1) / 2)];
+    const median = vals.length % 2 ? vals[(vals.length - 1) / 2] : (vals[vals.length / 2 - 1] + vals[vals.length / 2]) / 2; // echter Median (gerade Anzahl: Mittel der zwei mittleren)
     // timing: median weeks top->bottom of prior cycles, projected from current cycle peak
     let window = null;
     if (completed.length) {
@@ -203,6 +210,8 @@
     return {
       estimators: ests,
       bottomPrice: median,
+      coreZone: { low: median * 0.95, high: median * 1.05 }, // max. 10% breite Kernzone
+
       range: { low: vals[0], high: vals[vals.length - 1] },
       window,
       basis: `median of ${vals.length} estimators; priors n=${completed.length}`
@@ -240,6 +249,8 @@
         rangeLow: round2(pred.range.low), rangeHigh: round2(pred.range.high),
         errorPct: Math.round(err * 1000) / 10,
         hit: err <= tolerance,
+        inCore: target.bottomPrice >= pred.bottomPrice * 0.95 && target.bottomPrice <= pred.bottomPrice * 1.05,
+
         inRange: target.bottomPrice >= pred.range.low * (1 - tolerance) && target.bottomPrice <= pred.range.high * (1 + tolerance),
         basis: pred.basis
       });

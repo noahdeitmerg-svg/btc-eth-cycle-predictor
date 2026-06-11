@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bitcoin &amp; Ethereum Zyklus-Radar — ehrlich, backtested</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="vendor/chart.umd.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: linear-gradient(180deg, #0a0e27 0%, #0d1230 100%); color: #e0e0e0; min-height: 100vh; }
@@ -53,14 +53,14 @@
 
     <div class="disclaimer">
       ⚠️ <strong>Keine Finanzberatung.</strong> Dieses Modell beruht auf <strong>nur 3 abgeschlossenen Bitcoin-Zyklen</strong> — viel zu wenig für statistische Sicherheit.
-      Die ehrliche Trefferquote steht unten im Backtest: Die Punkt-Prognose verfehlte die 70%-Schwelle, die <em>Spannen</em> trafen 3 von 3 Böden, das <em>Top-Timing</em> lag 5 Tage daneben.
+      Alle Trefferquoten stehen ungeschönt unten im Backtest — inklusive der Warnung, dass die Modell-Verbesserungen an denselben 3 Böden gemessen wurden (Overfitting-Gefahr).
       Vergangene Zyklen garantieren nichts. Handle nie allein auf Basis eines Dashboards.
     </div>
 
     <div class="howto">
       📖 <strong>So liest du dieses Dashboard:</strong>
       ① Oben siehst du den aktuellen Stand beider Coins und wie tief die Korrektur bereits ist.
-      ② Die farbigen Boxen zeigen die <em>Boden-Spanne</em> des Modells — keinen exakten Preis, denn exakte Preise hat das Modell historisch nicht zuverlässig getroffen (siehe Backtest), Spannen dagegen 3/3.
+      ② Die farbigen Boxen zeigen die <em>Kernzone</em> (±5 %, max. 10 % breit) und die volle Modell-Spanne — wie oft beide historisch trafen, steht ehrlich im Backtest darunter.
       ③ Der Backtest zeigt ungeschönt, was das Modell an den echten Böden 2015/2018/2022 vorhergesagt hätte.
       ④ Charts: Fibonacci-Zonen, Halving-Vergleich, Korrektur-Overlay und Rainbow-Bänder ordnen den aktuellen Kurs historisch ein.
       ⑤ Die Makro-Karte (FRED) zeigt, wie Angst-Indikatoren heute im Vergleich zu früheren Böden stehen.
