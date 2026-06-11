@@ -41,7 +41,24 @@ console.log('\nCURRENT BTC:', JSON.stringify({ last: erBtc.lastClose, peak: erBt
 console.log('\nCURRENT ETH:', JSON.stringify({ last: erEth.lastClose, peak: erEth.cyclePeak.price, retraced: +(erEth.retracedNow * 100).toFixed(1), pred: predEth, valuationProxy: valEth && { z: +valEth.z.toFixed(2), label: valEth.label } }, null, 1));
 console.log('\nTOP TIMING PATTERN:', JSON.stringify(tt));
 
+// ---- ETH-Gegenprobe: Walk-forward auf den ETH-Boden 2022-06-16 ----
+// Vorzyklus 2018 aus dokumentierten Werten (CCCAGG: Top 2018-01-13 ~1.432 USD, Boden 2018-12-15 ~83 USD),
+// da die gebuendelte ETH-Reihe erst 2020-12 beginnt.
+const ETH_2018_CYCLE = { topDate: '2018-01-13', topPrice: 1432, bottomDate: '2018-12-15', bottomPrice: 83, drawdown: 1 - 83 / 1432, weeksTopToBottom: 48, weeksHalvingToTop: null };
+const ethBottom2022 = { date: '2022-06-16', price: 883.48 };
+const tEthB = Date.parse(ethBottom2022.date) / 1000;
+const ethTrunc = eth.filter(r => r.t <= tEthB - 8 * 7 * 86400);
+const ethPredWF = A.predictBottom(ethTrunc, [ETH_2018_CYCLE]);
+let ethTest = null;
+if (ethPredWF) {
+  const errE = Math.abs(ethPredWF.bottomPrice - ethBottom2022.price) / ethBottom2022.price;
+  ethTest = { date: ethBottom2022.date, actual: ethBottom2022.price, predicted: Math.round(ethPredWF.bottomPrice * 100) / 100,
+    errorPct: Math.round(errE * 1000) / 10, inCore: ethBottom2022.price >= ethPredWF.coreZone.low && ethBottom2022.price <= ethPredWF.coreZone.high };
+  console.log('\nETH-TEST (walk-forward, Boden 2022):', JSON.stringify(ethTest));
+}
+
 writeFileSync(join(__dirname, '../public/data/backtest_results.json'), JSON.stringify({
+  ethTest,
   generated: new Date().toISOString(),
   backtest: bt,
   cycles,

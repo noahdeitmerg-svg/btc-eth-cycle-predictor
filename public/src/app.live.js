@@ -31,6 +31,19 @@ function dePhase(en) {
 if (typeof Chart !== 'undefined') Chart.defaults.animation = false; // statisch rendern
 const charts = {};
 function mkChart(id, cfg) {
+  // Interaktivität: deutsche Tooltips + Zoom (Rad/Pinch) + Pan (Ziehen) auf allen Charts
+  cfg.options = cfg.options || {}; cfg.options.plugins = cfg.options.plugins || {};
+  cfg.options.interaction = { mode: 'index', intersect: false };
+  cfg.options.plugins.tooltip = {
+    backgroundColor: 'rgba(10,13,22,0.95)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1,
+    titleColor: '#e8ecf4', bodyColor: '#aeb6c8', padding: 10, cornerRadius: 10, boxPadding: 4,
+    callbacks: { label: c => ' ' + c.dataset.label + ': ' + (typeof c.parsed.y === 'number' ? c.parsed.y.toLocaleString('de-DE', { maximumFractionDigits: 2 }) : c.parsed.y) }
+  };
+  cfg.options.plugins.zoom = {
+    zoom: { wheel: { enabled: true, modifierKey: 'ctrl' }, pinch: { enabled: true }, mode: 'x' },
+    pan: { enabled: true, mode: 'x' },
+    limits: { x: { minRange: 5 } }
+  };
   if (charts[id]) charts[id].destroy();
   charts[id] = new Chart($(id).getContext('2d'), cfg);
 }
@@ -264,11 +277,49 @@ async function init() {
     renderRainbow('rainbowChart', btc, A.rainbowBands(btc));
     renderCorrectionOverlay('waveChart', btc, cycles.slice(1), erB);
 
+    setupScenario(erB, cycles, predB);
+    setupAlerts(erB, predB);
+    if (btJ.ethTest) {
+      $('backtest-summary').innerHTML += '<br>ETH-Gegenprobe (Boden 2022, nur 1 Vorzyklus): Prognose ' + fmtUsd(btJ.ethTest.predicted) + ' vs. tatsächlich ' + fmtUsd(btJ.ethTest.actual) + ' — Fehler <strong>' + String(btJ.ethTest.errorPct).replace('.', ',') + ' %</strong>' + (btJ.ethTest.inCore ? ' (in der Kernzone ✓)' : '') + '.';
+    }
     $('last-update').textContent = btcJ.fetched;
     $('loading').style.display = 'none';
   } catch (err) {
     console.error(err);
     $('loading').textContent = 'Fehler beim Laden: ' + err.message + ' — Seite über http aufrufen (python -m http.server), file:// blockiert fetch.';
+  }
+}
+
+/* Szenario-Regler + Alarm (Kernzone) */
+function setupScenario(er, cycles, pred) {
+  const slider = $('dd-slider'), out = $('dd-out');
+  if (!slider) return;
+  const render = () => {
+    const dd = +slider.value / 100;
+    const price = er.cyclePeak.price * (1 - dd);
+    const deeper = cycles.filter(c => c.drawdown >= dd).length;
+    const inZone = price >= pred.coreZone.low && price <= pred.coreZone.high;
+    out.innerHTML = '−' + slider.value + ' % → <strong>' + fmtUsd(price) + '</strong> · historisch ' + deeper + ' von ' + cycles.length + ' Zyklen so tief' + (inZone ? ' · <span style="color:var(--accent)">in der Kernzone</span>' : '');
+  };
+  slider.addEventListener('input', render); render();
+}
+function setupAlerts(er, pred) {
+  const btn = $('notify-btn');
+  const inZone = er.lastClose >= pred.coreZone.low && er.lastClose <= pred.coreZone.high;
+  if (inZone) {
+    const div = document.createElement('div');
+    div.className = 'note'; div.style.borderLeftColor = 'var(--pos)';
+    div.innerHTML = '<strong>BTC ist JETZT in der Boden-Kernzone</strong> (' + fmtUsd(er.lastClose) + ').';
+    document.querySelector('.container').insertBefore(div, document.querySelector('.note'));
+    if ('Notification' in window && Notification.permission === 'granted') {
+      try { new Notification('Zyklus-Radar', { body: 'BTC in Boden-Kernzone: ' + fmtUsd(er.lastClose), icon: 'icons/icon-192.png' }); } catch (e) { /* mobile braucht SW-Notification */ }
+    }
+  }
+  if (btn) {
+    if (!('Notification' in window)) { btn.style.display = 'none'; return; }
+    const sync = () => { btn.textContent = Notification.permission === 'granted' ? 'Alarm aktiv ✓' : 'Alarm aktivieren'; };
+    sync();
+    btn.addEventListener('click', async () => { await Notification.requestPermission(); sync(); });
   }
 }
 

@@ -1,5 +1,12 @@
 {
- "generated": "2026-06-11T20:02:00.736Z",
+ "ethTest": {
+  "date": "2022-06-16",
+  "actual": 883.48,
+  "predicted": 1332.04,
+  "errorPct": 50.8,
+  "inCore": false
+ },
+ "generated": "2026-06-11T20:28:52.999Z",
  "backtest": {
   "tolerance": 0.15,
   "leadWeeks": 8,

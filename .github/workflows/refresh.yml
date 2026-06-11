@@ -1,0 +1,80 @@
+name: Täglicher Daten-Refresh + Deploy + Alarm
+on:
+  schedule:
+    - cron: '20 6 * * *'   # täglich 06:20 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  issues: write
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+
+      - name: Daten holen (CoinGecko + FRED) und Backtest rechnen
+        env:
+          COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: |
+          python scripts/fetch_data.py
+          python scripts/fetch_macro.py
+          node scripts/run_backtest.mjs
+          node scripts/smoke_test.mjs
+
+      - name: Änderungen committen
+        run: |
+          git config user.name 'zyklus-radar-bot'
+          git config user.email 'bot@users.noreply.github.com'
+          git add public/data
+          git diff --cached --quiet || git commit -m "data: automatischer Tages-Refresh $(date -u +%F)"
+          git push
+
+      - name: Alarm prüfen (Kernzone / Bewertung)
+        run: |
+          node -e "
+            const r = require('./public/data/backtest_results.json');
+            const p = r.current.btc.prediction, v = r.current.btc.valuationProxy;
+            const btc = require('./public/data/btc_weekly.json');
+            const last = btc.data[btc.data.length - 1][4];
+            const inZone = last >= p.coreZone.low && last <= p.coreZone.high;
+            const cheap = v && v.z <= -1.25;
+            const fs = require('fs');
+            fs.appendFileSync(process.env.GITHUB_ENV,
+              'ALERT=' + ((inZone || cheap) ? '1' : '0') + '\n' +
+              'ALERT_TXT=BTC ' + Math.round(last) + ' USD | Kernzone ' + Math.round(p.coreZone.low) + '-' + Math.round(p.coreZone.high) + (inZone ? ' (DRIN)' : '') + ' | Bewertungs-z ' + (v ? v.z.toFixed(2) : 'n/a') + '\n');
+            console.log('inZone:', inZone, 'cheap:', cheap, 'last:', last);
+          "
+      - name: GitHub-Issue als Benachrichtigung
+        if: env.ALERT == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TITLE='ALARM: BTC in Boden-Kernzone / Bewertung billig'
+          if [ -z "$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number')" ]; then
+            gh issue create --title "$TITLE" --body "Automatischer Alarm vom Zyklus-Radar: $ALERT_TXT — Dashboard: https://noahdeitmerg-svg.github.io/btc-eth-cycle-predictor/"
+          else
+            echo 'Offenes Alarm-Issue existiert bereits — kein Duplikat.'
+          fi
+
+      - uses: actions/configure-pages@v4
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./public
+      - id: deployment
+        uses: actions/deploy-pages@v4

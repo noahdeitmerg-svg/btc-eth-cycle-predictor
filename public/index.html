@@ -11,6 +11,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Zyklus-Radar — BTC · ETH</title>
   <script src="vendor/chart.umd.min.js"></script>
+  <script src="vendor/hammer.min.js"></script>
+  <script src="vendor/chartjs-plugin-zoom.min.js"></script>
   <style>
     :root {
       --bg: #07090f;
@@ -101,12 +103,12 @@
     <div class="header">
       <h1>Zyklus-Radar <span>BTC · ETH</span></h1>
       <span class="pill ok" id="live-badge">lade…</span>
+      <button class="pill" id="notify-btn" style="cursor:pointer">Alarm aktivieren</button>
       <span class="meta">Zyklusstruktur · Bewertung · Halving-Muster · Makro (FRED) · walk-forward backtested</span>
     </div>
 
     <div class="note">
-      <strong>Keine Finanzberatung.</strong> Grundlage sind nur 3 abgeschlossene Bitcoin-Zyklen — zu wenig für statistische Sicherheit.
-      Die Kernzone unten hätte alle 3 historischen Böden getroffen, wurde aber an genau diesen 3 Fällen kalibriert (Auswahl-Effekt). Der nächste Zyklus kann das Muster brechen.
+      <strong>Datenlage:</strong> Bitcoin existiert seit 2009 — es gibt exakt 3 abgeschlossene Zyklen. Alle Aussagen beruhen auf diesen 3 plus Live-Daten; die Kernzone hätte alle 3 getroffen und wurde an ihnen kalibriert. Keine Finanzberatung.
     </div>
     <div class="note howto">
       <strong>So liest du das:</strong> Status zeigt, wie tief die Korrektur ist und ob die Bewertung historisch billig/teuer ist.
@@ -236,6 +238,14 @@
           <thead><tr><th>Kurs-Level</th><th>Drawdown</th><th>Anteil früherer Zyklen</th><th>Einordnung</th></tr></thead>
           <tbody id="prob-table"></tbody>
         </table>
+      </div>
+      <div style="margin-top:16px; padding:14px 18px; border:1px solid var(--stroke-soft); border-radius:14px; background:rgba(0,0,0,0.22)">
+        <span class="kicker">Szenario-Rechner</span>
+        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:14px; margin-top:6px">
+          <input type="range" id="dd-slider" min="50" max="90" value="65" step="1" style="flex:1; min-width:180px; accent-color:var(--accent)">
+          <div id="dd-out" style="font-variant-numeric:tabular-nums; font-weight:600; min-width:260px">—</div>
+        </div>
+        <div style="color:var(--muted); font-size:.8em; margin-top:6px">Ziehe den Regler: „Was wäre der BTC-Kurs bei X % Drawdown vom Zyklus-Hoch — und wie oft fiel es historisch so tief?"</div>
       </div>
     </div>
 
