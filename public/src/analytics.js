@@ -271,5 +271,65 @@
   function skel(t) { return { event: `Bottom ${t.bottomDate.slice(0, 4)}`, date: t.bottomDate, actual: round2(t.bottomPrice) }; }
   function round2(x) { return Math.round(x * 100) / 100; }
 
-  return { WEEK, HALVINGS, parseSeries, sma, fmtDate, findExtrema, fibLevels, elliottRead, valuationProxy, rainbowBands, cycleStats, predictBottom, topTiming, backtest };
+  // ---------- Elliott-Wellen-Zaehlung (heuristisch, automatisch) ----------
+  /**
+   * Automatische Wellen-Zaehlung des aktuellen Zyklus:
+   * Impulsphase (Zykluslow -> Peak) wird auf 5 Punkte reduziert (1..5),
+   * Korrekturphase (nach Peak) auf A-B-C. Heuristik, keine orthodoxe EW-Theorie —
+   * Wellen 2/4 = die zwei prominentesten Zwischen-Troughs, 1/3 = Peaks davor.
+   * invalidation = Peak: steigt der Kurs darueber, ist die Korrektur-Zaehlung hinfaellig.
+   */
+  function elliottWaves(series) {
+    const er = elliottRead(series);
+    if (!er) return null;
+    // Anker des aktuellen Zyklus: tiefstes Tief der 220 Wochen VOR dem Peak
+    // (verhindert, dass alte Datenausreisser wie das 2010er-Mikro-Tief die Zaehlung verzerren)
+    const win = series.filter(p => p.t >= er.cyclePeak.t - 220 * WEEK && p.t <= er.cyclePeak.t);
+    const lowRow = win.reduce((a, b) => (b.l < a.l ? b : a));
+    er.cycleLow = { t: lowRow.t, price: lowRow.l };
+    er.fibs = fibLevels(er.cycleLow.price, er.cyclePeak.price);
+    er.retracedNow = (er.cyclePeak.price - series[series.length - 1].c) / (er.cyclePeak.price - er.cycleLow.price);
+    const seg = series.filter(p => p.t >= er.cycleLow.t && p.t <= er.cyclePeak.t);
+    const ext = findExtrema(seg, 6).filter(e => e.t > er.cycleLow.t && e.t < er.cyclePeak.t);
+    const troughs = ext.filter(e => e.type === 'trough');
+    // Prominenz eines Troughs: Abstand zum hoechsten Peak davor (relative Korrekturtiefe)
+    const prom = tr => {
+      const before = ext.filter(e => e.type === 'peak' && e.t < tr.t);
+      const hi = before.length ? Math.max(...before.map(p => p.price)) : er.cycleLow.price;
+      return hi > 0 ? (hi - tr.price) / hi : 0;
+    };
+    const mainTroughs = [...troughs].sort((a, b) => prom(b) - prom(a)).slice(0, 2).sort((a, b) => a.t - b.t);
+    const points = [{ t: er.cycleLow.t, price: er.cycleLow.price, label: '0' }];
+    let waveN = 1;
+    for (const tr of mainTroughs) {
+      const between = ext.filter(e => e.type === 'peak' && e.t < tr.t && e.t > points[points.length - 1].t);
+      if (between.length) { const pk = between.reduce((a, b) => (b.price > a.price ? b : a)); points.push({ t: pk.t, price: pk.price, label: String(waveN++) }); }
+      points.push({ t: tr.t, price: tr.price, label: String(waveN++) });
+    }
+    points.push({ t: er.cyclePeak.t, price: er.cyclePeak.price, label: String(Math.max(waveN, 5)) });
+    // Korrektur: A = tiefster Trough nach Peak, B = hoechster Peak danach, C = letzter Stand (laufend)
+    const post = findExtrema(series, 4).filter(e => e.t > er.cyclePeak.t);
+    const postTroughs = post.filter(e => e.type === 'trough');
+    const abc = [];
+    if (postTroughs.length) {
+      const A = postTroughs.reduce((a, b) => (b.price < a.price ? b : a));
+      abc.push({ t: A.t, price: A.price, label: 'A' });
+      const postPeaks = post.filter(e => e.type === 'peak' && e.t > A.t);
+      if (postPeaks.length) {
+        const B = postPeaks.reduce((a, b) => (b.price > a.price ? b : a));
+        abc.push({ t: B.t, price: B.price, label: 'B' });
+      }
+    }
+    const last = series[series.length - 1];
+    abc.push({ t: last.t, price: last.c, label: abc.length >= 2 ? 'C?' : (abc.length === 1 ? 'B/C?' : 'A?') });
+    const phase = abc.length >= 3 ? 'Welle C (laufend)' : abc.length === 2 ? 'Welle B/C (laufend)' : 'Welle A (laufend)';
+    return {
+      impulse: points, correction: abc, phase,
+      invalidation: er.cyclePeak.price,
+      fibs: er.fibs, retracedNow: er.retracedNow,
+      note: 'Automatische Zaehlung (Heuristik) — Elliott-Zaehlungen sind interpretativ; gleiche Daten erlauben oft mehrere Zaehlungen.'
+    };
+  }
+
+  return { WEEK, HALVINGS, parseSeries, sma, fmtDate, findExtrema, fibLevels, elliottRead, elliottWaves, valuationProxy, rainbowBands, cycleStats, predictBottom, topTiming, backtest };
 }));

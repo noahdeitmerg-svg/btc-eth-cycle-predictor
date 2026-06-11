@@ -13,6 +13,7 @@
   <script src="vendor/chart.umd.min.js"></script>
   <script src="vendor/hammer.min.js"></script>
   <script src="vendor/chartjs-plugin-zoom.min.js"></script>
+  <script src="vendor/chartjs-chart-financial.min.js"></script>
   <style>
     :root {
       --bg: #07090f;
@@ -96,6 +97,28 @@
     .verdict { border-left: 3px solid var(--pos); background: rgba(0,0,0,0.22); border-radius: 12px; padding: 14px 18px; margin-top: 14px; font-size: .92em; color: #ccd6cf; }
     .verdict strong { color: var(--txt); }
     #backtest-summary { font-size: .98em; line-height: 1.8; margin: 6px 0 2px; }
+    body[data-theme="light"] {
+      --bg: #eef1f7;
+      --glass: rgba(255,255,255,0.62);
+      --glass-strong: rgba(255,255,255,0.85);
+      --stroke: rgba(15,25,50,0.12);
+      --stroke-soft: rgba(15,25,50,0.07);
+      --txt: #18223c;
+      --muted: #5b6478;
+      --accent: #4f6bf0;
+      --pos: #0e9f6e;
+      --neg: #dc2626;
+      --warn: #b45309;
+      background:
+        radial-gradient(1100px 600px at 15% -5%, rgba(79,107,240,0.10), transparent 60%),
+        radial-gradient(900px 500px at 95% 8%, rgba(14,159,110,0.06), transparent 55%),
+        var(--bg);
+    }
+    body[data-theme="light"] .card { box-shadow: 0 14px 34px rgba(30,45,90,0.12), inset 0 1px 0 rgba(255,255,255,0.9); }
+    body[data-theme="light"] .tablebox { background: rgba(255,255,255,0.55); }
+    body[data-theme="light"] th { color: #44506b; }
+    body[data-theme="light"] .verdict { background: rgba(255,255,255,0.5); color: #2a3a30; }
+    body[data-theme="light"] .note { color: #3c4660; }
   </style>
 </head>
 <body>
@@ -104,6 +127,7 @@
       <h1>Zyklus-Radar <span>BTC · ETH</span></h1>
       <span class="pill ok" id="live-badge">lade…</span>
       <button class="pill" id="notify-btn" style="cursor:pointer">Alarm aktivieren</button>
+      <button class="pill" id="theme-btn" style="cursor:pointer">Hell</button>
       <span class="meta">Zyklusstruktur · Bewertung · Halving-Muster · Makro (FRED) · walk-forward backtested</span>
     </div>
 
@@ -172,6 +196,7 @@
         <h2>Bitcoin — Kurs, Fibonacci, 200W-SMA</h2>
         <div class="sub">Gestrichelt = Fibonacci-Rückzugszonen · Gold = 200W-Schnitt (historische Bodenregion) · Log-Skala</div>
         <button class="fullscreen-btn" onclick="fullscreenChart('btcChart')">Vollbild</button>
+        <button class="fullscreen-btn" id="btc-mode">Kerzen</button>
         <div class="chart-container"><canvas id="btcChart"></canvas></div>
       </div>
       <div class="card">
@@ -179,6 +204,7 @@
         <h2>Ethereum — Kurs, Fibonacci, 200W-SMA</h2>
         <div class="sub">Gleiche Darstellung · Log-Skala: gleiche Abstände = gleiche Prozentbewegung</div>
         <button class="fullscreen-btn" onclick="fullscreenChart('ethChart')">Vollbild</button>
+        <button class="fullscreen-btn" id="eth-mode">Kerzen</button>
         <div class="chart-container"><canvas id="ethChart"></canvas></div>
       </div>
     </div>
@@ -197,6 +223,24 @@
       <div class="sub">Historische Quantile von Kurs ÷ 200W-SMA (log-bereinigt, keine rohen Preis-Perzentile). Weiß = Kurs.</div>
       <button class="fullscreen-btn" onclick="fullscreenChart('rainbowChart')">Vollbild</button>
       <div class="chart-container tall"><canvas id="rainbowChart"></canvas></div>
+    </div>
+
+    <div class="card full">
+      <span class="kicker">Elliott-Wellen</span>
+      <h2>Wellen-Zählung &amp; aktuelle Analyse</h2>
+      <div class="sub">Automatische Zählung des aktuellen Zyklus: Impulswellen 1–5 (Zyklustief → Top), danach Korrektur A–B–C. Heuristik — Elliott-Zählungen sind interpretativ, gleiche Daten erlauben oft mehrere Zählungen. Über dem Invalidierungslevel (Zyklus-Top) ist die Korrektur-Zählung hinfällig.</div>
+      <div class="grid" style="margin:0 0 4px">
+        <div>
+          <div class="metric" style="border-bottom:none"><span style="font-size:.85em; white-space:normal; line-height:1.6" id="elliott-btc-text">—</span></div>
+          <button class="fullscreen-btn" onclick="fullscreenChart('btcElliott')">Vollbild</button>
+          <div class="chart-container"><canvas id="btcElliott"></canvas></div>
+        </div>
+        <div>
+          <div class="metric" style="border-bottom:none"><span style="font-size:.85em; white-space:normal; line-height:1.6" id="elliott-eth-text">—</span></div>
+          <button class="fullscreen-btn" onclick="fullscreenChart('ethElliott')">Vollbild</button>
+          <div class="chart-container"><canvas id="ethElliott"></canvas></div>
+        </div>
+      </div>
     </div>
 
     <div class="card full">

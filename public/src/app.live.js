@@ -271,8 +271,20 @@ async function init() {
       'Sinnvoller Einsatz: als Zonen-Landkarte (Spannen + Zeitfenster + Bewertungs-Ampel) neben eigener Recherche, Positionsgrößen-Disziplin und Zeit-Diversifikation (z. B. gestaffelte Käufe statt Einmal-Timing).';
 
     const m200b = A.sma(btc, 200), m200e = A.sma(eth, 200);
-    renderPriceChart('btcChart', btc.slice(-280), 'Bitcoin', COL.cyan, erB.fibs, m200b.slice(-280));
-    renderPriceChart('ethChart', eth.slice(-280), 'Ethereum', COL.pink, erE.fibs, m200e.slice(-280));
+    renderPrice('btcChart', btc.slice(-280), 'Bitcoin', COL.cyan, erB.fibs, m200b.slice(-280), 'line');
+    renderPrice('ethChart', eth.slice(-280), 'Ethereum', COL.pink, erE.fibs, m200e.slice(-280), 'line');
+    // Elliott-Wellen: Zaehlung + Charts + Analyse-Text
+    const ewB = A.elliottWaves(btc), ewE = A.elliottWaves(eth);
+    if (ewB) {
+      renderElliott('btcElliott', btc, ewB, 'Bitcoin', COL.cyan);
+      $('elliott-btc-text').innerHTML = '<strong>BTC: ' + ewB.phase + '</strong> — ' + fmtPct(ewB.retracedNow * 100) + ' der Impulsbewegung (Welle 1–5: ' + fmtK(ewB.impulse[0].price) + ' → ' + fmtK(ewB.invalidation) + ') zurückgegeben. Nächste Fib-Ziele: 0,618 = ' + fmtK(ewB.fibs[0.618]) + ' · 0,786 = ' + fmtK(ewB.fibs[0.786]) + '. Zählung ungültig über ' + fmtK(ewB.invalidation) + '.';
+    }
+    if (ewE) {
+      renderElliott('ethElliott', eth, ewE, 'Ethereum', COL.green);
+      $('elliott-eth-text').innerHTML = '<strong>ETH: ' + ewE.phase + '</strong> — ' + fmtPct(ewE.retracedNow * 100) + ' zurückgegeben (kurze Datenhistorie: Zählung beginnt ' + A.fmtDate(ewE.impulse[0].t) + '). Fib-Ziele: 0,618 = ' + fmtK(ewE.fibs[0.618]) + ' · 0,786 = ' + fmtK(ewE.fibs[0.786]) + '. Zählung ungültig über ' + fmtK(ewE.invalidation) + '.';
+    }
+    setupModeToggles();
+    setupTheme();
     renderCycleComparison('cycleChart', btc);
     renderRainbow('rainbowChart', btc, A.rainbowBands(btc));
     renderCorrectionOverlay('waveChart', btc, cycles.slice(1), erB);
@@ -288,6 +300,100 @@ async function init() {
     console.error(err);
     $('loading').textContent = 'Fehler beim Laden: ' + err.message + ' — Seite über http aufrufen (python -m http.server), file:// blockiert fetch.';
   }
+}
+
+/* Elliott-Wellen-Chart: Kurs + nummerierte Wellenpunkte (1-5, A-B-C) + Invalidierungslinie */
+const waveLabelPlugin = {
+  id: 'waveLabels',
+  afterDatasetsDraw(chart) {
+    const meta = chart.$waveLabels;
+    if (!meta) return;
+    const { ctx } = chart;
+    const xs = chart.scales.x, ys = chart.scales.y;
+    ctx.save();
+    ctx.font = '700 12px Inter, "Segoe UI", sans-serif';
+    ctx.textAlign = 'center';
+    for (const p of meta.points) {
+      const xi = meta.labels.indexOf(p.dateLabel);
+      if (xi < 0) continue;
+      const x = xs.getPixelForValue(xi), y = ys.getPixelForValue(p.price);
+      const up = p.kind === 'peak';
+      ctx.fillStyle = 'rgba(10,14,24,0.85)';
+      ctx.beginPath(); ctx.arc(x, y + (up ? -16 : 16), 10, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = p.abc ? '#f87171' : '#6e8bff'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.fillStyle = '#e8ecf4';
+      ctx.fillText(p.label, x, y + (up ? -12 : 20));
+    }
+    ctx.restore();
+  }
+};
+if (typeof Chart !== 'undefined') Chart.register(waveLabelPlugin);
+
+function renderElliott(id, series, ew, name, color) {
+  const start = ew.impulse[0].t;
+  const seg = series.filter(p => p.t >= start);
+  const labels = seg.map(p => A.fmtDate(p.t));
+  const inv = ew.invalidation;
+  const ds = [
+    { label: name + ' Wochenschluss', data: seg.map(p => p.c), borderColor: color, borderWidth: 2, pointRadius: 0, tension: 0.15 },
+    { label: 'Invalidierung (Zyklus-Top ' + fmtK(inv) + ')', data: labels.map(() => inv), borderColor: 'rgba(248,113,113,0.8)', borderWidth: 1, borderDash: [4, 4], pointRadius: 0 },
+    { label: 'Fib 0,618 = ' + fmtK(ew.fibs[0.618]), data: labels.map(() => ew.fibs[0.618]), borderColor: 'rgba(139,147,167,0.55)', borderWidth: 1, borderDash: [2, 5], pointRadius: 0 },
+    { label: 'Fib 0,786 = ' + fmtK(ew.fibs[0.786]), data: labels.map(() => ew.fibs[0.786]), borderColor: 'rgba(139,147,167,0.55)', borderWidth: 1, borderDash: [2, 5], pointRadius: 0 }
+  ];
+  mkChart(id, { type: 'line', data: { labels: labels, datasets: ds }, options: { responsive: true, maintainAspectRatio: false, plugins: legendTitle(name + ' — automatische Wellen-Zählung (Heuristik)'), scales: axStyle() } });
+  const pts = [];
+  for (const p of ew.impulse) pts.push({ dateLabel: A.fmtDate(p.t), price: p.price, label: p.label, kind: (+p.label % 2 === 1 || p.label === '5') ? 'peak' : 'trough', abc: false });
+  for (const p of ew.correction) pts.push({ dateLabel: A.fmtDate(p.t), price: p.price, label: p.label, kind: p.label === 'B' ? 'peak' : 'trough', abc: true });
+  charts[id].$waveLabels = { points: pts, labels: labels };
+  charts[id].update();
+}
+
+/* Kerzen/Linien-Umschalter fuer die Preischarts */
+const priceChartState = {};
+function renderPrice(id, series, name, color, fibs, sma200, mode) {
+  priceChartState[id] = { series, name, color, fibs, sma200, mode };
+  if (mode === 'candle' && typeof Chart !== 'undefined' && Chart.registry.controllers.get('candlestick')) {
+    const labels = series.map(p => A.fmtDate(p.t));
+    mkChart(id, {
+      type: 'candlestick',
+      data: { labels: labels, datasets: [{
+        label: name + ' (Wochenkerzen)',
+        data: series.map((p, i) => ({ x: i, o: p.o, h: p.h, l: p.l, c: p.c })),
+        borderColors: { up: '#34d399', down: '#f87171', unchanged: '#8b93a7' },
+        backgroundColors: { up: 'rgba(52,211,153,0.85)', down: 'rgba(248,113,113,0.85)', unchanged: '#8b93a7' }
+      }] },
+      options: { responsive: true, maintainAspectRatio: false, parsing: false,
+        plugins: legendTitle(name + ' — Wochenkerzen (O/H/L/C)'),
+        scales: { y: { type: 'logarithmic', ticks: { color: COL.grey, callback: v => typeof v === 'number' ? fmtK(v) : v }, grid: { color: 'rgba(128,140,160,0.10)' } },
+                  x: { type: 'linear', min: 0, max: series.length - 1, ticks: { color: COL.grey, maxTicksLimit: 10, callback: v => labels[Math.round(v)] || '' }, grid: { display: false } } } }
+    });
+  } else {
+    renderPriceChart(id, series, name, color, fibs, sma200);
+  }
+}
+function setupModeToggles() {
+  for (const [btnId, chartId] of [['btc-mode', 'btcChart'], ['eth-mode', 'ethChart']]) {
+    const b = $(btnId);
+    if (!b) continue;
+    b.addEventListener('click', () => {
+      const s = priceChartState[chartId];
+      const next = s.mode === 'candle' ? 'line' : 'candle';
+      renderPrice(chartId, s.series, s.name, s.color, s.fibs, s.sma200, next);
+      b.textContent = next === 'candle' ? 'Linie' : 'Kerzen';
+    });
+  }
+}
+
+/* Theme-Umschalter (hell/dunkel, persistiert) */
+function setupTheme() {
+  const btn = $('theme-btn');
+  const apply = t => { document.body.dataset.theme = t; if (btn) btn.textContent = t === 'light' ? 'Dunkel' : 'Hell'; };
+  apply(localStorage.getItem('theme') || 'dark');
+  if (btn) btn.addEventListener('click', () => {
+    const next = (localStorage.getItem('theme') || 'dark') === 'light' ? 'dark' : 'light';
+    localStorage.setItem('theme', next);
+    location.reload(); // Charts mit Theme-Farben sauber neu aufbauen
+  });
 }
 
 /* Szenario-Regler + Alarm (Kernzone) */
