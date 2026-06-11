@@ -1,58 +1,63 @@
 #!/usr/bin/env python3
-"""Refresh the bundled weekly snapshots. Reads API keys from .env (repo root).
-With COINGECKO_API_KEY set, CoinGecko is used; otherwise CryptoCompare (keyless).
+"""Daten-Refresh (Hybrid):
+- Basis: gebundelte Langzeit-Wochenhistorie (CryptoCompare-Snapshot, seit 2010)
+- Frisch: letzte 365 Tage von CoinGecko (Demo-Key aus .env) -> Wochenkerzen,
+  ueberschreiben die juengsten Wochen der Basis.
+So bleibt die volle Zyklus-Historie erhalten UND die Daten sind aktuell.
+Demo-Keys erlauben max. 365 Tage Historie; CryptoCompare keyless liefert 401.
 Usage: python scripts/fetch_data.py"""
-import json, urllib.request, datetime, pathlib, os
+import json, urllib.request, datetime, pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / "public" / "data"
 
-def load_env():
-    env = {}
-    p = ROOT / ".env"
-    if p.exists():
-        for line in p.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                k, v = line.split("=", 1)
-                env[k.strip()] = v.strip()
-    return env
-
-ENV = load_env()
-CG_KEY = ENV.get("COINGECKO_API_KEY") or os.environ.get("COINGECKO_API_KEY", "")
+ENV = {}
+for line in (ROOT / ".env").read_text(encoding="utf-8").splitlines():
+    line = line.strip()
+    if line and not line.startswith("#") and "=" in line:
+        k, v = line.split("=", 1); ENV[k.strip()] = v.strip()
+CG_KEY = ENV.get("COINGECKO_API_KEY", "")
 
 def get(url, headers=None):
     req = urllib.request.Request(url, headers=headers or {})
-    return json.load(urllib.request.urlopen(req, timeout=30))
+    return json.load(urllib.request.urlopen(req, timeout=40))
 
-def weekly_from_coingecko(coin):  # coin: "bitcoin" / "ethereum"
-    url = f"{ENV.get('COINGECKO_API','https://api.coingecko.com/api/v3')}/coins/{coin}/market_chart?vs_currency=usd&days=max&interval=daily"
-    j = get(url, {"x-cg-demo-api-key": CG_KEY})
-    prices = j["prices"]; vols = dict((int(t//1000), v) for t, v in j.get("total_volumes", []))
-    # CoinGecko liefert nur Close -> Wochen-OHLC aus Tages-Closes aggregieren
+def coingecko_tail_weekly(coin):
+    """Letzte 365 Tage von CoinGecko -> Wochenbars [time,o,h,l,c,v]."""
+    base = ENV.get("COINGECKO_API", "https://api.coingecko.com/api/v3")
+    j = get(f"{base}/coins/{coin}/market_chart?vs_currency=usd&days=365&interval=daily",
+            {"x-cg-demo-api-key": CG_KEY})
+    vols = {int(t // 1000): v for t, v in j.get("total_volumes", [])}
     weeks = {}
-    for ts, close in prices:
-        t = int(ts // 1000); wk = t - (t % (7*86400))
+    for ts, close in j["prices"]:
+        t = int(ts // 1000); wk = t - (t % (7 * 86400))
         w = weeks.setdefault(wk, {"o": close, "h": close, "l": close, "c": close, "v": 0})
         w["h"] = max(w["h"], close); w["l"] = min(w["l"], close); w["c"] = close
         w["v"] += vols.get(t, 0)
-    return [[wk, round(w["o"],4), round(w["h"],4), round(w["l"],4), round(w["c"],4), round(w["v"])]
-            for wk, w in sorted(weeks.items()) if w["c"] > 0], "CoinGecko market_chart (weekly OHLC aggregated from daily closes)"
-
-def weekly_from_cryptocompare(sym):  # sym: "BTC" / "ETH"
-    j = get(f"https://min-api.cryptocompare.com/data/v2/histoday?fsym={sym}&tsym=USD&aggregate=7&allData=true")
-    rows = [r for r in j["Data"]["Data"] if r["close"] > 0]
-    return [[r["time"], round(r["open"],4), round(r["high"],4), round(r["low"],4), round(r["close"],4), round(r.get("volumeto",0))]
-            for r in rows], "CryptoCompare CCCAGG histoday aggregate=7"
+    return [[wk, round(w["o"], 4), round(w["h"], 4), round(w["l"], 4), round(w["c"], 4), round(w["v"])]
+            for wk, w in sorted(weeks.items()) if w["c"] > 0]
 
 for sym, coin in (("BTC", "bitcoin"), ("ETH", "ethereum")):
+    f = OUT / f"{sym.lower()}_weekly.json"
+    snap = json.load(open(f))
+    base_rows = {r[0]: r for r in snap["data"]}
+    n_before = len(base_rows)
+    last_before = max(base_rows)
     if CG_KEY:
-        data, source = weekly_from_coingecko(coin)
+        fresh = coingecko_tail_weekly(coin)
+        for r in fresh:
+            old = base_rows.get(r[0])
+            if old:
+                # Merge: echte Intraweek-Extreme der Basis behalten, Close aktualisieren
+                r = [r[0], old[1], max(old[2], r[2]), min(old[3], r[3]), r[4], max(old[5], r[5])]
+            base_rows[r[0]] = r
+        src = "CryptoCompare-Snapshot (Langzeit) + CoinGecko Demo (letzte 365 Tage)"
     else:
-        data, source = weekly_from_cryptocompare(sym)
-    json.dump({"symbol": sym, "interval": "weekly", "unit": "USD", "source": source,
-               "fetched": str(datetime.date.today()),
-               "fields": ["time","open","high","low","close","volume_usd"], "data": data},
-              open(OUT / f"{sym.lower()}_weekly.json", "w"))
-    print(f"{sym}: {len(data)} weeks via {source.split(' ')[0]}")
-print("Now run: node scripts/run_backtest.mjs  (regenerates backtest_results.json)")
+        fresh = []
+        src = snap.get("source", "Snapshot")
+    rows = [base_rows[k] for k in sorted(base_rows)]
+    snap.update({"source": src, "fetched": str(datetime.date.today()), "data": rows})
+    json.dump(snap, open(f, "w"))
+    d_last = datetime.date.fromtimestamp(rows[-1][0])
+    print(f"{sym}: {n_before} -> {len(rows)} Wochen | neu/aktualisiert: {len(fresh)} | letzte Woche: {d_last} | Schlusskurs: {rows[-1][4]:,}")
+print("Fertig. Jetzt: node scripts/run_backtest.mjs")

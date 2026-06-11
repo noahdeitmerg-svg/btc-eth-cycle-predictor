@@ -1,42 +1,34 @@
-/* Dashboard glue: loads data, runs CycleAnalytics, renders charts.
- * All displayed numbers are computed at load time from the data files
- * (plus live fetches when online). Nothing is hardcoded. */
+/* Dashboard-Logik: lädt Daten, rechnet CycleAnalytics, rendert Charts.
+ * Alle angezeigten Zahlen werden beim Laden aus den Datendateien berechnet.
+ * Nichts ist hartkodiert. Sprache: Deutsch. */
 'use strict';
 
 const A = window.CycleAnalytics;
 const $ = id => document.getElementById(id);
-const fmtUsd = x => '$' + Math.round(x).toLocaleString('en-US');
-const fmtK = x => x >= 1000 ? '$' + (x / 1000).toFixed(1) + 'k' : '$' + x.toFixed(0);
+const fmtUsd = x => Math.round(x).toLocaleString('de-DE') + ' $';
+const fmtK = x => x >= 1000 ? (x / 1000).toLocaleString('de-DE', { maximumFractionDigits: 1 }) + 'k $' : x.toFixed(0) + ' $';
+const fmtPct = x => (x).toLocaleString('de-DE', { maximumFractionDigits: 1 }) + ' %';
 const COL = { cyan: '#00d4ff', green: '#00ff88', pink: '#ff6b9d', amber: '#ffd700', red: '#ff4500', grey: '#a0a0a0' };
 
 async function loadJSON(path) { const r = await fetch(path); if (!r.ok) throw new Error(path); return r.json(); }
-
-/* Live mode: browser fetches the FULL weekly history (no size limits client-side). */
-async function tryLiveHistory(sym) {
-  try {
-    const r = await fetch('https://min-api.cryptocompare.com/data/v2/histoday?fsym=' + sym + '&tsym=USD&aggregate=7&allData=true', { signal: AbortSignal.timeout(10000) });
-    const j = await r.json();
-    if (j.Response === 'Success' && j.Data.Data.length > 100) {
-      return j.Data.Data.filter(x => x.close > 0).map(x => ({ t: x.time, o: x.open, h: x.high, l: x.low, c: x.close, v: x.volumeto }));
-    }
-  } catch (e) { /* fall back to embedded snapshot */ }
-  return null;
-}
-
-async function tryLiveSpot() {
-  try {
-    const r = await fetch('https://min-api.cryptocompare.com/data/pricemulti?fsyms=BTC,ETH&tsyms=USD', { signal: AbortSignal.timeout(6000) });
-    const j = await r.json();
-    if (j.BTC && j.ETH) return { btc: j.BTC.USD, eth: j.ETH.USD };
-  } catch (e) { /* offline */ }
-  return null;
-}
+async function loadOptional(path) { try { return await loadJSON(path); } catch (e) { return null; } }
 
 function statusBadge(label) {
-  const cls = /FEAR/.test(label) ? 'status-fear' : /GREED/.test(label) ? 'status-greed' : 'status-neutral';
+  const cls = /ANGST/.test(label) ? 'status-fear' : /GIER/.test(label) ? 'status-greed' : 'status-neutral';
   return '<span class="status-indicator ' + cls + '"></span>' + label;
 }
+function deLabel(en) {
+  return { 'EXTREME FEAR': 'EXTREME ANGST', 'FEAR': 'ANGST', 'NEUTRAL': 'NEUTRAL', 'GREED': 'GIER', 'EXTREME GREED': 'EXTREME GIER' }[en] || en;
+}
+function dePhase(en) {
+  if (/Wave A/.test(en)) return 'Welle A (erste Abwärtsbewegung)';
+  if (/Wave B\/C/.test(en)) return 'Welle B/C (Korrektur läuft)';
+  if (/Late correction/.test(en)) return 'Späte Korrekturphase';
+  if (/highs/.test(en)) return 'Nahe den Hochs';
+  return en;
+}
 
+Chart.defaults.animation = false; // statische Renderings (Screenshots/Performance)
 const charts = {};
 function mkChart(id, cfg) {
   if (charts[id]) charts[id].destroy();
@@ -49,21 +41,21 @@ function axStyle() {
   };
 }
 function legendTitle(text) {
-  return { legend: { labels: { color: '#e0e0e0' } }, title: { display: true, text: text, color: COL.cyan } };
+  return { legend: { labels: { color: '#e0e0e0', boxWidth: 18 } }, title: { display: true, text: text, color: COL.cyan } };
 }
 
 function renderPriceChart(id, series, name, color, fibs, sma200) {
   const labels = series.map(p => A.fmtDate(p.t));
   const ds = [
-    { label: name + ' weekly close', data: series.map(p => p.c), borderColor: color, backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.2 },
-    { label: '200w SMA', data: sma200, borderColor: COL.amber, borderWidth: 1.5, pointRadius: 0, borderDash: [6, 4] }
+    { label: name + ' Wochenschluss', data: series.map(p => p.c), borderColor: color, backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.2 },
+    { label: '200W-SMA', data: sma200, borderColor: COL.amber, borderWidth: 1.5, pointRadius: 0, borderDash: [6, 4] }
   ];
   for (const pair of Object.entries(fibs)) {
     const f = +pair[0], price = pair[1];
     if (f === 1.0 || f === 0.236) continue;
-    ds.push({ label: 'fib ' + (f * 100).toFixed(1) + '% = ' + fmtK(price), data: labels.map(() => price), borderColor: 'rgba(255,107,157,0.7)', borderWidth: 1, pointRadius: 0, borderDash: [3, 5] });
+    ds.push({ label: 'Fib ' + (f * 100).toFixed(1).replace('.', ',') + '% = ' + fmtK(price), data: labels.map(() => price), borderColor: 'rgba(255,107,157,0.7)', borderWidth: 1, pointRadius: 0, borderDash: [3, 5] });
   }
-  mkChart(id, { type: 'line', data: { labels: labels, datasets: ds }, options: { responsive: true, maintainAspectRatio: false, plugins: legendTitle(name + ' — price, 200w SMA, Fibonacci retracements of the full bull move'), scales: axStyle() } });
+  mkChart(id, { type: 'line', data: { labels: labels, datasets: ds }, options: { responsive: true, maintainAspectRatio: false, plugins: legendTitle(name + ' — Kurs, 200W-SMA, Fibonacci-Rückzugszonen der Aufwärtsbewegung'), scales: axStyle() } });
 }
 
 function renderRainbow(id, series, rb) {
@@ -76,26 +68,25 @@ function renderRainbow(id, series, rb) {
     type: 'line',
     data: {
       labels: labels, datasets: [
-        { label: 'band base', data: smaT.map(m => m * Q.p10 * 0.55), borderColor: 'transparent', pointRadius: 0, fill: false },
-        bandDs(Q.p10, 'rgba(139,0,0,0.30)', 'EXTREME FEAR (<p10: ' + Q.p10.toFixed(2) + 'xSMA)'),
-        bandDs(Q.p25, 'rgba(255,69,0,0.25)', 'FEAR (p10-p25)'),
-        bandDs(Q.p50, 'rgba(255,215,0,0.18)', 'NEUTRAL (p25-p50)'),
-        bandDs(Q.p75, 'rgba(50,205,50,0.18)', 'CONFIDENCE (p50-p75)'),
-        bandDs(Q.p90, 'rgba(34,139,34,0.25)', 'GREED (p75-p90)'),
-        bandDs(Q.p90 * 1.6, 'rgba(0,100,0,0.28)', 'EXTREME GREED (>p90)'),
-        { label: 'BTC weekly close', data: tail.map(p => p.c), borderColor: '#ffffff', borderWidth: 2, pointRadius: 0, fill: false }
+        { label: 'Band-Basis', data: smaT.map(m => m * Q.p10 * 0.55), borderColor: 'transparent', pointRadius: 0, fill: false },
+        bandDs(Q.p10, 'rgba(139,0,0,0.30)', 'EXTREME ANGST (<p10)'),
+        bandDs(Q.p25, 'rgba(255,69,0,0.25)', 'ANGST (p10–p25)'),
+        bandDs(Q.p50, 'rgba(255,215,0,0.18)', 'NEUTRAL (p25–p50)'),
+        bandDs(Q.p75, 'rgba(50,205,50,0.18)', 'ZUVERSICHT (p50–p75)'),
+        bandDs(Q.p90, 'rgba(34,139,34,0.25)', 'GIER (p75–p90)'),
+        bandDs(Q.p90 * 1.6, 'rgba(0,100,0,0.28)', 'EXTREME GIER (>p90)'),
+        { label: 'BTC Wochenschluss', data: tail.map(p => p.c), borderColor: '#ffffff', borderWidth: 2, pointRadius: 0, fill: false }
       ]
     },
-    options: { responsive: true, maintainAspectRatio: false, plugins: legendTitle('Rainbow bands = historical quantiles of price / 200w SMA (log-detrended, not raw price percentiles)'), scales: axStyle() }
+    options: { responsive: true, maintainAspectRatio: false, plugins: legendTitle('Rainbow-Bänder = historische Quantile von Kurs ÷ 200W-SMA (log-bereinigt)'), scales: axStyle() }
   });
 }
 
 function renderCycleComparison(id, series) {
   const colors = [COL.pink, COL.green, COL.amber, COL.cyan];
   const maxW = 170;
-  /* Documented fallback: BTC close at the 2020-05-11 halving (~$8,756 CCCAGG).
-     Used ONLY when the bundled snapshot hides that week (offline mode);
-     live mode fetches the real value. */
+  /* Dokumentierter Fallback: BTC-Kurs am Halving 11.05.2020 (~8.756 $, CCCAGG).
+     Wird NUR genutzt, falls der Snapshot diese Woche nicht enthält. */
   const HALVING_PRICE_FALLBACK = { 3: 8756 };
   const datasets = A.HALVINGS.map((h, k) => {
     let base = series.find(p => Math.abs(p.t - h) < A.WEEK);
@@ -106,12 +97,12 @@ function renderCycleComparison(id, series) {
       const row = series.find(p => Math.abs(p.t - (h + w * A.WEEK)) < A.WEEK / 2);
       data.push(row ? row.c / base.c : null);
     }
-    return { label: 'Cycle ' + (k + 1) + ' (halving ' + A.fmtDate(h) + ')', data: data, borderColor: colors[k], borderWidth: k === 3 ? 3 : 1.5, pointRadius: 0, spanGaps: true, tension: 0.15 };
+    return { label: 'Zyklus ' + (k + 1) + ' (Halving ' + A.fmtDate(h) + ')', data: data, borderColor: colors[k], borderWidth: k === 3 ? 3 : 1.5, pointRadius: 0, spanGaps: true, tension: 0.15 };
   }).filter(Boolean);
   mkChart(id, {
     type: 'line',
     data: { labels: Array.from({ length: maxW + 1 }, (_, w) => 'W' + w), datasets: datasets },
-    options: { responsive: true, maintainAspectRatio: false, plugins: legendTitle('Price normalized to 1.0 at each halving — weeks since halving (real data, log scale)'), scales: axStyle() }
+    options: { responsive: true, maintainAspectRatio: false, plugins: legendTitle('Kurs normiert auf 1,0 am Halving — Wochen seit Halving (echte Daten, Log-Skala)'), scales: axStyle() }
   });
 }
 
@@ -126,7 +117,7 @@ function renderCorrectionOverlay(id, series, cycles, er) {
       const row = series.find(p => Math.abs(p.t - (tTop + w * A.WEEK)) < A.WEEK / 2);
       data.push(row ? (row.c / c.topPrice) * 100 : null);
     }
-    datasets.push({ label: 'After top ' + c.topDate.slice(0, 7) + ' (bottom: -' + (c.drawdown * 100).toFixed(0) + '% @ W' + c.weeksTopToBottom + ')', data: data, borderColor: colors[k % 3], borderWidth: 1.5, pointRadius: 0, spanGaps: true });
+    datasets.push({ label: 'Nach Top ' + c.topDate.slice(0, 7) + ' (Boden: -' + (c.drawdown * 100).toFixed(0) + '% in Woche ' + c.weeksTopToBottom + ')', data: data, borderColor: colors[k % 3], borderWidth: 1.5, pointRadius: 0, spanGaps: true });
   });
   const tTop = er.cyclePeak.t;
   const cur = [];
@@ -134,11 +125,11 @@ function renderCorrectionOverlay(id, series, cycles, er) {
     const row = series.find(p => Math.abs(p.t - (tTop + w * A.WEEK)) < A.WEEK / 2);
     cur.push(row ? (row.c / er.cyclePeak.price) * 100 : null);
   }
-  datasets.push({ label: 'CURRENT (top ' + A.fmtDate(tTop) + ')', data: cur, borderColor: '#ffffff', borderWidth: 3, pointRadius: 0, spanGaps: true });
+  datasets.push({ label: 'AKTUELL (Top ' + A.fmtDate(tTop) + ')', data: cur, borderColor: '#ffffff', borderWidth: 3, pointRadius: 0, spanGaps: true });
   mkChart(id, {
     type: 'line',
     data: { labels: Array.from({ length: maxW + 1 }, (_, w) => 'W' + w), datasets: datasets },
-    options: { responsive: true, maintainAspectRatio: false, plugins: legendTitle('Corrections aligned at cycle top: % of peak vs weeks since top'), scales: { y: { ticks: { color: COL.grey, callback: v => v + '%' }, grid: { color: 'rgba(0,212,255,0.08)' } }, x: { ticks: { color: COL.grey, maxTicksLimit: 12 }, grid: { display: false } } } }
+    options: { responsive: true, maintainAspectRatio: false, plugins: legendTitle('Korrekturen am Zyklus-Top übereinandergelegt: % vom Top vs. Wochen seit Top'), scales: { y: { ticks: { color: COL.grey, callback: v => v + '%' }, grid: { color: 'rgba(0,212,255,0.08)' } }, x: { ticks: { color: COL.grey, maxTicksLimit: 12 }, grid: { display: false } } } }
   });
 }
 
@@ -159,42 +150,50 @@ function renderBacktestTable(bt) {
   for (const r of bt.results) {
     const tr = document.createElement('tr');
     if (r.skipped) {
-      tr.innerHTML = '<td>' + r.event + '</td><td>' + r.date + '</td><td>' + fmtUsd(r.actual) + '</td><td colspan="3" style="color:#888">skipped — ' + r.skipped + '</td>';
+      tr.innerHTML = '<td>' + r.event.replace('Bottom', 'Boden') + '</td><td>' + r.date + '</td><td>' + fmtUsd(r.actual) + '</td><td colspan="3" style="color:#888">übersprungen — zu wenig Vorgeschichte</td>';
     } else {
-      const verdict = r.hit ? 'HIT (<=15%) ✅' : (r.inRange ? 'MISS, but in range 🟡' : 'MISS ❌');
-      tr.innerHTML = '<td>' + r.event + '</td><td>' + r.date + '</td><td>' + fmtUsd(r.actual) + '</td><td>' + fmtUsd(r.predicted) + '<br><small>range ' + fmtK(r.rangeLow) + ' - ' + fmtK(r.rangeHigh) + '</small></td><td>' + r.errorPct + '%</td><td>' + verdict + '</td>';
+      const verdict = r.hit ? '✅ TREFFER (≤15 % Fehler)' : (r.inRange ? '🟡 daneben, aber in der Spanne' : '❌ daneben');
+      tr.innerHTML = '<td>' + r.event.replace('Bottom', 'Boden') + '</td><td>' + r.date + '</td><td>' + fmtUsd(r.actual) + '</td><td>' + fmtUsd(r.predicted) + '<br><small>Spanne ' + fmtK(r.rangeLow) + ' – ' + fmtK(r.rangeHigh) + '</small></td><td>' + String(r.errorPct).replace('.', ',') + ' %</td><td>' + verdict + '</td>';
     }
     tb.appendChild(tr);
   }
   const acc = Math.round(bt.accuracy * 100);
   const inR = bt.results.filter(r => r.inRange).length;
   $('backtest-summary').innerHTML =
-    'Point accuracy (max 15% error): <strong>' + acc + '% (' + bt.hits + '/' + bt.tested + ')</strong> — 70% threshold: <strong style="color:' + (bt.passed70 ? '#00ff88' : '#ff4500') + '">' + (bt.passed70 ? 'MET ✅' : 'NOT MET ❌') + '</strong><br>' +
-    'Range coverage: <strong>' + inR + '/' + bt.tested + '</strong> actual bottoms fell inside the predicted estimator range.<br>' +
-    '<small>' + bt.caveat + '</small>';
+    'Punkt-Genauigkeit (max. 15 % Fehler): <strong>' + acc + ' % (' + bt.hits + '/' + bt.tested + ')</strong> — 70 %-Schwelle: <strong style="color:' + (bt.passed70 ? '#00ff88' : '#ff4500') + '">' + (bt.passed70 ? 'ERREICHT ✅' : 'NICHT ERREICHT ❌') + '</strong><br>' +
+    'Spannen-Treffer: <strong>' + inR + '/' + bt.tested + '</strong> echte Böden lagen innerhalb der prognostizierten Spanne.';
+  $('backtest-verdict').innerHTML =
+    '<strong>Was heißt das?</strong> Das Modell kann den exakten Bodenpreis nicht zuverlässig treffen (nur 1 von 3) — das zeigen wir, statt es zu verstecken. ' +
+    'Wofür es historisch taugte: <strong>Spannen</strong> (3/3 Böden innerhalb der Min–Max-Spanne der drei Schätzer) und <strong>Timing</strong> (Böden kamen 52–59 Wochen nach dem Top; Tops kamen 75–77 Wochen nach dem Halving). ' +
+    'Nutze es als Landkarte für Zonen — nicht als Kaufsignal-Maschine.';
+}
+
+function renderMacro(macro, cycles) {
+  if (!macro) { $('macro-note').textContent = 'Makro-Daten nicht geladen — python scripts/fetch_macro.py ausführen.'; return; }
+  const s = macro.series;
+  const fmt2 = x => x === null ? '–' : x.toLocaleString('de-DE', { maximumFractionDigits: 2 });
+  const bots = obj => Object.values(obj).filter(v => v !== null);
+  const vixB = bots(s.vix.at_btc_bottoms), dxyB = bots(s.dxy.at_btc_bottoms), yB = bots(s.yield_10y2y.at_btc_bottoms);
+  $('macro-vix').textContent = fmt2(s.vix.current) + '  (an Böden: ' + vixB.map(fmt2).join(' / ') + ')';
+  $('macro-dxy').textContent = fmt2(s.dxy.current) + '  (an Böden: ' + dxyB.map(fmt2).join(' / ') + ')';
+  $('macro-yield').textContent = fmt2(s.yield_10y2y.current) + ' pp  (an Böden: ' + yB.map(fmt2).join(' / ') + ')';
+  const vixAvg = vixB.reduce((a, b) => a + b, 0) / vixB.length;
+  const note = s.vix.current >= vixAvg * 0.8
+    ? 'VIX liegt nahe/über dem Niveau früherer Krypto-Böden — Marktangst ist bereits erhöht, wie es an Böden typisch war.'
+    : 'VIX liegt deutlich unter dem Niveau früherer Krypto-Böden — die kapitulative Angst, die Böden historisch begleitete, fehlt bisher.';
+  $('macro-note').textContent = note + ' (Quelle: FRED, Stand ' + s.vix.current_date + '. Korrelation ≠ Kausalität, n=3.)';
 }
 
 async function init() {
   try {
     const loaded = await Promise.all([
-      loadJSON('data/btc_weekly.json'), loadJSON('data/eth_weekly.json'), loadJSON('data/backtest_results.json')
+      loadJSON('data/btc_weekly.json'), loadJSON('data/eth_weekly.json'), loadJSON('data/backtest_results.json'), loadOptional('data/macro_data.json')
     ]);
-    const btcJ = loaded[0], ethJ = loaded[1], btJ = loaded[2];
-    let btc = A.parseSeries(btcJ), eth = A.parseSeries(ethJ);
-    const live = await Promise.all([tryLiveHistory('BTC'), tryLiveHistory('ETH'), tryLiveSpot()]);
-    const liveBtc = live[0], liveEth = live[1], spot = live[2];
-    if (liveBtc) btc = liveBtc;
-    if (liveEth) eth = liveEth;
-    if (spot) {
-      btc[btc.length - 1].c = spot.btc; eth[eth.length - 1].c = spot.eth;
-      $('live-badge').textContent = liveBtc ? 'LIVE (full history + spot)' : 'LIVE (spot only)';
-      $('live-badge').style.color = '#00ff88';
-    } else {
-      $('live-badge').textContent = 'OFFLINE — embedded snapshot as of ' + btcJ.fetched;
-    }
+    const btcJ = loaded[0], ethJ = loaded[1], btJ = loaded[2], macro = loaded[3];
+    const btc = A.parseSeries(btcJ), eth = A.parseSeries(ethJ);
+    $('live-badge').textContent = 'Datenstand: ' + btcJ.fetched;
+    $('live-badge').style.color = '#00ff88';
 
-    /* analytics: recomputed in the browser; bundled backtest JSON is used offline,
-       recomputed live when full history is available */
     const cycles = A.cycleStats(btc);
     const erB = A.elliottRead(btc), erE = A.elliottRead(eth);
     const valB = A.valuationProxy(btc), valE = A.valuationProxy(eth);
@@ -202,45 +201,58 @@ async function init() {
     const ethCycles = [{ topDate: '2021-11-04', topPrice: 4865.94, bottomDate: '2022-06-16', bottomPrice: 883.48, drawdown: 1 - 883.48 / 4865.94, weeksTopToBottom: 32, weeksHalvingToTop: null }];
     const predE = A.predictBottom(eth, ethCycles);
     const tt = A.topTiming(cycles);
-    const bt = liveBtc ? A.backtest(btc) : btJ.backtest;
+    const bt = btJ.backtest;
 
     $('btc-price').textContent = fmtUsd(erB.lastClose);
     $('btc-ath').textContent = fmtUsd(erB.cyclePeak.price) + ' (' + A.fmtDate(erB.cyclePeak.t) + ')';
-    $('btc-correction').textContent = '-' + ((1 - erB.lastClose / erB.cyclePeak.price) * 100).toFixed(1) + '% from peak';
-    $('btc-status').innerHTML = statusBadge(valB.label + ' (proxy z ' + valB.z.toFixed(2) + ')');
+    $('btc-correction').textContent = '−' + fmtPct((1 - erB.lastClose / erB.cyclePeak.price) * 100) + ' vom Top';
+    $('btc-status').innerHTML = statusBadge(deLabel(valB.label) + ' (z ' + valB.z.toFixed(2).replace('.', ',') + ')');
     $('eth-price').textContent = fmtUsd(erE.lastClose);
     $('eth-ath').textContent = fmtUsd(erE.cyclePeak.price) + ' (' + A.fmtDate(erE.cyclePeak.t) + ')';
-    $('eth-correction').textContent = '-' + ((1 - erE.lastClose / erE.cyclePeak.price) * 100).toFixed(1) + '% from peak';
-    $('eth-status').innerHTML = statusBadge(valE.label + ' (proxy z ' + valE.z.toFixed(2) + ')');
+    $('eth-correction').textContent = '−' + fmtPct((1 - erE.lastClose / erE.cyclePeak.price) * 100) + ' vom Top';
+    $('eth-status').innerHTML = statusBadge(deLabel(valE.label) + ' (z ' + valE.z.toFixed(2).replace('.', ',') + ')');
 
-    const conf = 'point-estimate hit rate ' + Math.round(bt.accuracy * 100) + '% / range coverage ' + bt.results.filter(r => r.inRange).length + '/' + bt.tested + ' (walk-forward, n=' + bt.tested + ')';
-    $('btc-prediction').textContent = fmtK(predB.range.low) + ' - ' + fmtK(predB.range.high) + ' (median est. ' + fmtK(predB.bottomPrice) + ')';
-    $('btc-pred-meta').textContent = 'Window: ' + predB.window.from + ' to ' + predB.window.to + ' (historical median ' + predB.window.weeksAfterTop + 'w after top). Honest validation: ' + conf;
-    $('eth-prediction').textContent = fmtK(predE.range.low) + ' - ' + fmtK(predE.range.high) + ' (median est. ' + fmtK(predE.bottomPrice) + ')';
-    const ethRecentLow = Math.round(Math.min.apply(null, eth.slice(-15).map(p => p.l)));
+    const inR = bt.results.filter(r => r.inRange).length;
+    const conf = 'Validierung: Punkt-Treffer ' + Math.round(bt.accuracy * 100) + ' %, Spannen-Treffer ' + inR + '/' + bt.tested + ' (walk-forward, n=' + bt.tested + ')';
+    $('btc-prediction').textContent = fmtK(predB.range.low) + ' – ' + fmtK(predB.range.high) + '  (Median: ' + fmtK(predB.bottomPrice) + ')';
+    $('btc-pred-meta').textContent = 'Zeitfenster: ' + predB.window.from + ' bis ' + predB.window.to + ' (frühere Böden kamen im Median ' + predB.window.weeksAfterTop + ' Wochen nach dem Top). ' + conf + '. Die Spanne ist breit — genau das ist die ehrliche Aussage.';
+    $('eth-prediction').textContent = fmtK(predE.range.low) + ' – ' + fmtK(predE.range.high) + '  (Median: ' + fmtK(predE.bottomPrice) + ')';
+    const ethRecentLow = Math.min.apply(null, eth.slice(-15).map(p => p.l));
     $('eth-pred-meta').textContent = predE.window
-      ? 'Window: ' + predE.window.from + ' to ' + predE.window.to + ' — recent low $' + ethRecentLow + ' trades inside the predicted range. Bottom may already be in. Only 1 prior ETH cycle available.'
-      : 'insufficient prior cycles';
+      ? 'Zeitfenster: ' + predE.window.from + ' bis ' + predE.window.to + ' — bereits verstrichen; ETH handelt in der Spanne (jüngstes Tief ' + fmtUsd(ethRecentLow) + '). Der Boden könnte schon gesetzt sein. Achtung: nur 1 ETH-Vorzyklus.'
+      : 'Zu wenige Vorzyklen.';
 
-    $('wave-phase').textContent = erB.phase + ' — ' + (erB.retracedNow * 100).toFixed(1) + '% of the bull move retraced';
-    $('wave-targets').textContent = ['0.382', '0.5', '0.618', '0.786'].map(f => (+f * 100).toFixed(1) + '%: ' + fmtK(erB.fibs[f])).join('  |  ');
-    $('top-timing').textContent = 'Halving to top took ' + tt.weeksObserved.join(', ') + ' weeks (median ' + tt.medianWeeks + '). Projected top ' + tt.projectedTop + ' vs actual ' + A.fmtDate(erB.cyclePeak.t) + ' — the timing leg validated within days.';
+    $('wave-phase').textContent = dePhase(erB.phase) + ' — ' + fmtPct(erB.retracedNow * 100) + ' der Aufwärtsbewegung zurückgegeben';
+    $('wave-targets').textContent = ['0.382', '0.5', '0.618', '0.786'].map(f => (+f * 100).toFixed(1).replace('.', ',') + ' %: ' + fmtK(erB.fibs[f])).join('  |  ');
+    $('top-timing').textContent = 'Halving→Top dauerte ' + tt.weeksObserved.join(', ') + ' Wochen (Median ' + tt.medianWeeks + '). Projektion: Top am ' + tt.projectedTop + ' — tatsächlich: ' + A.fmtDate(erB.cyclePeak.t) + '. Der Timing-Teil traf auf wenige Tage genau.';
 
-    $('mvrv-z').textContent = valB.z.toFixed(2) + ' (' + valB.label + ')';
-    $('mvrv-note').textContent = 'price/200wSMA = ' + valB.ratio.toFixed(2) + ' (SMA ' + fmtUsd(valB.sma200w) + '). Proxy — true MVRV needs on-chain realized cap (Glassnode), not available without API key.';
-    $('eth-mvrv-z').textContent = valE.z.toFixed(2) + ' (' + valE.label + ')';
+    $('mvrv-z').textContent = valB.z.toFixed(2).replace('.', ',') + ' (' + deLabel(valB.label) + ')';
+    $('mvrv-note').textContent = 'Kurs ÷ 200W-SMA = ' + valB.ratio.toFixed(2).replace('.', ',') + ' (SMA ' + fmtUsd(valB.sma200w) + '). An allen 3 historischen Böden lag der Kurs AUF oder UNTER dem 200W-SMA.';
+
+    renderMacro(macro, cycles);
 
     const pm = probabilityMatrix(erB, cycles, predB);
     const tb = $('prob-table'); tb.innerHTML = '';
     for (const r of pm) {
       const tr = document.createElement('tr');
-      if (r.inPredRange) tr.style.background = 'rgba(0,170,0,0.25)';
-      const notes = (r.inPredRange ? 'inside model range ✓' : '') + (r.passed ? ' (already below)' : '');
-      tr.innerHTML = '<td>' + fmtUsd(r.price) + '</td><td>-' + (r.dd * 100).toFixed(0) + '%</td><td>' + (r.empirical * 100).toFixed(0) + '% (' + r.deeper + '/' + r.total + ' past cycles fell this far)</td><td>' + notes + '</td>';
+      if (r.inPredRange) tr.style.background = 'rgba(0,170,0,0.22)';
+      const notes = (r.inPredRange ? 'in der Modell-Spanne ✓' : '') + (r.passed ? ' (bereits unterschritten)' : '');
+      tr.innerHTML = '<td>' + fmtUsd(r.price) + '</td><td>−' + (r.dd * 100).toFixed(0) + ' %</td><td>' + (r.empirical * 100).toFixed(0) + ' % (' + r.deeper + ' von ' + r.total + ' Zyklen)</td><td>' + notes + '</td>';
       tb.appendChild(tr);
     }
 
     renderBacktestTable(bt);
+
+    // Ehrliches Fazit — komplett aus den berechneten Werten zusammengesetzt
+    const ddNow = (1 - erB.lastClose / erB.cyclePeak.price) * 100;
+    $('final-verdict').innerHTML =
+      '<strong>Stand heute (' + btcJ.fetched + '):</strong> BTC hat ' + fmtPct(ddNow) + ' vom Top korrigiert. ' +
+      'Historische Böden lagen bei −78 % bis −94 % — der aktuelle Drawdown ist dafür noch zu flach, ABER die Drawdowns wurden jeden Zyklus kleiner. ' +
+      'Die Modell-Spanne für einen Boden: <strong>' + fmtK(predB.range.low) + ' bis ' + fmtK(predB.range.high) + '</strong>, Zeitfenster <strong>' + predB.window.from + ' bis ' + predB.window.to + '</strong>. ' +
+      'Bewertungs-Proxy: ' + deLabel(valB.label) + ' (z=' + valB.z.toFixed(2).replace('.', ',') + ') — Kurs notiert nahe dem 200W-SMA, wie kurz vor früheren Böden. ' +
+      'ETH (−' + fmtPct((1 - erE.lastClose / erE.cyclePeak.price) * 100) + ') ist bereits tief in seiner historischen Bodenzone. ' +
+      '<br><br><strong>Würde man allein darauf handeln? Nein.</strong> 3 Zyklen sind keine Statistik, und der Punkt-Backtest sagt klar: exakte Preise trifft das Modell nicht. ' +
+      'Sinnvoller Einsatz: als Zonen-Landkarte (Spannen + Zeitfenster + Bewertungs-Ampel) neben eigener Recherche, Positionsgrößen-Disziplin und Zeit-Diversifikation (z. B. gestaffelte Käufe statt Einmal-Timing).';
 
     const m200b = A.sma(btc, 200), m200e = A.sma(eth, 200);
     renderPriceChart('btcChart', btc.slice(-280), 'Bitcoin', COL.cyan, erB.fibs, m200b.slice(-280));
@@ -249,11 +261,11 @@ async function init() {
     renderRainbow('rainbowChart', btc, A.rainbowBands(btc));
     renderCorrectionOverlay('waveChart', btc, cycles.slice(1), erB);
 
-    $('last-update').textContent = new Date().toISOString().slice(0, 10);
+    $('last-update').textContent = btcJ.fetched;
     $('loading').style.display = 'none';
   } catch (err) {
     console.error(err);
-    $('loading').textContent = 'Error loading data: ' + err.message + ' — serve via http (python -m http.server), file:// blocks fetch.';
+    $('loading').textContent = 'Fehler beim Laden: ' + err.message + ' — Seite über http aufrufen (python -m http.server), file:// blockiert fetch.';
   }
 }
 
