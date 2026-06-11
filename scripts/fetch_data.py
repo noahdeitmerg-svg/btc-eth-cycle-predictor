@@ -6,7 +6,7 @@
 So bleibt die volle Zyklus-Historie erhalten UND die Daten sind aktuell.
 Demo-Keys erlauben max. 365 Tage Historie; CryptoCompare keyless liefert 401.
 Usage: python scripts/fetch_data.py"""
-import json, urllib.request, datetime, pathlib
+import json, urllib.request, datetime, pathlib, os
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / "public" / "data"
