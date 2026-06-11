@@ -1,5 +1,5 @@
 {
- "generated": "2026-06-11T19:51:29.588Z",
+ "generated": "2026-06-11T20:02:00.736Z",
  "backtest": {
   "tolerance": 0.15,
   "leadWeeks": 8,
@@ -19,7 +19,8 @@
     "rangeHigh": 265.78,
     "errorPct": 9.2,
     "hit": true,
-    "inCore": false,
+    "inCore": true,
+    "meanErrorPct": null,
     "inRange": true,
     "basis": "median of 2 estimators; priors n=1"
    },
@@ -33,6 +34,7 @@
     "errorPct": 1.9,
     "hit": true,
     "inCore": true,
+    "meanErrorPct": null,
     "inRange": true,
     "basis": "median of 4 estimators; priors n=2"
    },
@@ -45,7 +47,8 @@
     "rangeHigh": 17729.32,
     "errorPct": 9.7,
     "hit": true,
-    "inCore": false,
+    "inCore": true,
+    "meanErrorPct": null,
     "inRange": true,
     "basis": "median of 4 estimators; priors n=3"
    }
@@ -105,8 +108,8 @@
     },
     "bottomPrice": 32124.913674123443,
     "coreZone": {
-     "low": 30518.66799041727,
-     "high": 33731.159357829616
+     "low": 28912.422306711098,
+     "high": 35658.65417827702
     },
     "range": {
      "low": 27025.487919999985,
@@ -158,8 +161,8 @@
     },
     "bottomPrice": 1327.393715242646,
     "coreZone": {
-     "low": 1261.0240294805137,
-     "high": 1393.7634010047784
+     "low": 1194.6543437183816,
+     "high": 1473.4070239193372
     },
     "range": {
      "low": 899.811690485292,

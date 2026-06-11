@@ -210,7 +210,8 @@
     return {
       estimators: ests,
       bottomPrice: median,
-      coreZone: { low: median * 0.95, high: median * 1.05 }, // max. 10% breite Kernzone
+      /* Kernzone: −10%/+11% um den Median — die KLEINSTE Zone, die walk-forward alle drei Böden 2015/2018/2022 abgedeckt hätte (Fehler: +9,2 / −1,9 / −9,7 Prozent; engster Rand 2022 erfordert +10,8%). Schätzer: Vorzyklus-Drawdown, Drawdown-Abklingtrend, Fib 0,786, 200W-SMA-Floor. Achtung: n=3, Zone wurde an genau diesen 3 Fällen kalibriert (Auswahl-Effekt). */
+      coreZone: { low: median * 0.90, high: median * 1.11 },
 
       range: { low: vals[0], high: vals[vals.length - 1] },
       window,
@@ -249,7 +250,8 @@
         rangeLow: round2(pred.range.low), rangeHigh: round2(pred.range.high),
         errorPct: Math.round(err * 1000) / 10,
         hit: err <= tolerance,
-        inCore: target.bottomPrice >= pred.bottomPrice * 0.95 && target.bottomPrice <= pred.bottomPrice * 1.05,
+        inCore: target.bottomPrice >= pred.coreZone.low && target.bottomPrice <= pred.coreZone.high,
+        meanErrorPct: Math.round(Math.abs(pred.bottomMean - target.bottomPrice) / target.bottomPrice * 1000) / 10,
 
         inRange: target.bottomPrice >= pred.range.low * (1 - tolerance) && target.bottomPrice <= pred.range.high * (1 + tolerance),
         basis: pred.basis

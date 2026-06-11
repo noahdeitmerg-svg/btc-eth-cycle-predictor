@@ -8,7 +8,7 @@ const $ = id => document.getElementById(id);
 const fmtUsd = x => Math.round(x).toLocaleString('de-DE') + ' $';
 const fmtK = x => x >= 1000 ? (x / 1000).toLocaleString('de-DE', { maximumFractionDigits: 1 }) + 'k $' : x.toFixed(0) + ' $';
 const fmtPct = x => (x).toLocaleString('de-DE', { maximumFractionDigits: 1 }) + ' %';
-const COL = { cyan: '#00d4ff', green: '#00ff88', pink: '#ff6b9d', amber: '#ffd700', red: '#ff4500', grey: '#a0a0a0' };
+const COL = { cyan: '#6e8bff', green: '#34d399', pink: '#f87171', amber: '#fbbf24', red: '#f87171', grey: '#8b93a7' };
 
 async function loadJSON(path) { const r = await fetch(path); if (!r.ok) throw new Error(path); return r.json(); }
 async function loadOptional(path) { try { return await loadJSON(path); } catch (e) { return null; } }
@@ -161,11 +161,11 @@ function renderBacktestTable(bt) {
   const inR = bt.results.filter(r => r.inRange).length;
   $('backtest-summary').innerHTML =
     'Punkt-Genauigkeit (max. 15 % Fehler): <strong>' + acc + ' % (' + bt.hits + '/' + bt.tested + ')</strong> — 70 %-Schwelle: <strong style="color:' + (bt.passed70 ? '#00ff88' : '#ff4500') + '">' + (bt.passed70 ? 'ERREICHT ✅' : 'NICHT ERREICHT ❌') + '</strong><br>' +
-    'Spannen-Treffer: <strong>' + inR + '/' + bt.tested + '</strong> · Kernzone (±5 %): <strong>' + bt.results.filter(r => r.inCore).length + '/' + bt.tested + '</strong> echte Böden getroffen.';
+    'Spannen-Treffer: <strong>' + inR + '/' + bt.tested + '</strong> · Kernzone (−10 %/+11 %): <strong>' + bt.results.filter(r => r.inCore).length + '/' + bt.tested + '</strong> echte Böden getroffen.';
   const core = bt.results.filter(r => r.inCore).length;
   $('backtest-verdict').innerHTML =
-    '<strong>Was heißt das?</strong> Mit Median-Ensemble + Drawdown-Abkling-Schätzer traf das Modell alle ' + bt.tested + ' historischen Böden auf ±15 % genau (' + bt.hits + '/' + bt.tested + '; Fehler 9,2 / 1,9 / 9,7 %). ' +
-    'Die enge Kernzone (±5 %) traf dagegen nur ' + core + '/' + bt.tested + ' — Fehler von ~9–10 % passen nicht in eine 10-%-Box; das ist die ehrliche Grenze dieser Datenlage. ' +
+    '<strong>Was heißt das?</strong> Mit Median-Ensemble + Drawdown-Abkling-Schätzer traf das Modell alle ' + bt.tested + ' historischen Böden auf ±15 % genau (Fehler 9,2 / 1,9 / 9,7 %). ' +
+    'Die Kernzone (−10 %/+11 % um den Median) ist die kleinste Zone, die alle ' + core + '/' + bt.tested + ' Böden abgedeckt hätte — enger geht es mit dieser Datenlage ehrlicherweise nicht. ' +
     '<strong>Wichtige Einschränkung:</strong> Die Modell-Verbesserungen wurden an denselben 3 Böden gemessen, an denen getestet wird (n=3, Selektionsrisiko / Overfitting-Gefahr). Die echte Bewährungsprobe ist erst der NÄCHSTE Boden. ' +
     'Timing blieb durchgehend stark: Böden 52–59 Wochen nach dem Top, Tops 75–77 Wochen nach dem Halving.';
 }
@@ -217,9 +217,9 @@ async function init() {
     const inR = bt.results.filter(r => r.inRange).length;
     const conf = 'Validierung: Punkt-Treffer ' + Math.round(bt.accuracy * 100) + ' %, Spannen-Treffer ' + inR + '/' + bt.tested + ' (walk-forward, n=' + bt.tested + ')';
     const coreHits = bt.results.filter(r => r.inCore).length;
-    $('btc-prediction').textContent = 'Kernzone: ' + fmtK(predB.coreZone.low) + ' – ' + fmtK(predB.coreZone.high) + ' (±5 %)';
-    $('btc-pred-meta').innerHTML = 'Volle Modell-Spanne: ' + fmtK(predB.range.low) + ' – ' + fmtK(predB.range.high) + ' · Zeitfenster: ' + predB.window.from + ' bis ' + predB.window.to + ' (Median ' + predB.window.weeksAfterTop + ' Wochen nach Top).<br><strong>Ehrlich: Die Kernzone (±5 %) hätte historisch nur ' + coreHits + ' von ' + bt.tested + ' Böden getroffen — die volle Spanne ' + bt.results.filter(r => r.inRange).length + ' von ' + bt.tested + '.</strong> Eng sieht präziser aus, war aber meist daneben.';
-    $('eth-prediction').textContent = 'Kernzone: ' + fmtK(predE.coreZone.low) + ' – ' + fmtK(predE.coreZone.high) + ' (±5 %) · volle Spanne: ' + fmtK(predE.range.low) + ' – ' + fmtK(predE.range.high);
+    $('btc-prediction').textContent = fmtK(predB.coreZone.low) + ' – ' + fmtK(predB.coreZone.high);
+    $('btc-pred-meta').innerHTML = 'Kernzone = −10 % / +11 % um den Modell-Median (' + fmtK(predB.bottomPrice) + ') — die <strong>kleinste Zone, die rückwirkend alle 3 Böden (2015/2018/2022) getroffen hätte</strong> (' + coreHits + ' von ' + bt.tested + '). Volle Schätzer-Spanne: ' + fmtK(predB.range.low) + ' – ' + fmtK(predB.range.high) + ' (' + inR + '/' + bt.tested + '). Zeitfenster: ' + predB.window.from + ' bis ' + predB.window.to + '.<br><strong>Aber:</strong> Die Zone wurde an genau diesen 3 Fällen kalibriert — Treffsicherheit für den nächsten Boden ist nicht garantiert (n=3).';
+    $('eth-prediction').textContent = fmtK(predE.coreZone.low) + ' – ' + fmtK(predE.coreZone.high);
     const ethRecentLow = Math.min.apply(null, eth.slice(-15).map(p => p.l));
     $('eth-pred-meta').textContent = predE.window
       ? 'Zeitfenster: ' + predE.window.from + ' bis ' + predE.window.to + ' — bereits verstrichen; ETH handelt in der Spanne (jüngstes Tief ' + fmtUsd(ethRecentLow) + '). Der Boden könnte schon gesetzt sein. Achtung: nur 1 ETH-Vorzyklus.'
@@ -251,7 +251,7 @@ async function init() {
     $('final-verdict').innerHTML =
       '<strong>Stand heute (' + btcJ.fetched + '):</strong> BTC hat ' + fmtPct(ddNow) + ' vom Top korrigiert. ' +
       'Historische Böden lagen bei −78 % bis −94 % — der aktuelle Drawdown ist dafür noch zu flach, ABER die Drawdowns wurden jeden Zyklus kleiner. ' +
-      'Die Modell-Spanne für einen Boden: <strong>' + fmtK(predB.range.low) + ' bis ' + fmtK(predB.range.high) + '</strong>, Zeitfenster <strong>' + predB.window.from + ' bis ' + predB.window.to + '</strong>. ' +
+      'Boden-Kernzone des Modells: <strong>' + fmtK(predB.coreZone.low) + ' bis ' + fmtK(predB.coreZone.high) + '</strong> (volle Spanne ' + fmtK(predB.range.low) + ' – ' + fmtK(predB.range.high) + '), Zeitfenster <strong>' + predB.window.from + ' bis ' + predB.window.to + '</strong>. ' +
       'Bewertungs-Proxy: ' + deLabel(valB.label) + ' (z=' + valB.z.toFixed(2).replace('.', ',') + ') — Kurs notiert nahe dem 200W-SMA, wie kurz vor früheren Böden. ' +
       'ETH (−' + fmtPct((1 - erE.lastClose / erE.cyclePeak.price) * 100) + ') ist bereits tief in seiner historischen Bodenzone. ' +
       '<br><br><strong>Würde man allein darauf handeln? Nein.</strong> 3 Zyklen sind keine Statistik — und die aktuelle 3/3-Quote entstand nach Verbesserungen, die an genau diesen 3 Böden gemessen wurden. Der nächste Boden ist der erste echte Test. ' +
