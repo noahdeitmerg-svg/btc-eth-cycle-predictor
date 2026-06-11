@@ -1,0 +1,204 @@
+{
+ "generated": "2026-06-11T19:16:22.179Z",
+ "backtest": {
+  "tolerance": 0.15,
+  "leadWeeks": 8,
+  "results": [
+   {
+    "event": "Bottom 2011",
+    "date": "2011-11-12",
+    "actual": 1.99,
+    "skipped": "insufficient history"
+   },
+   {
+    "event": "Bottom 2015",
+    "date": "2015-01-10",
+    "actual": 157.29,
+    "predicted": 77.61,
+    "rangeLow": 77.61,
+    "rangeHigh": 265.78,
+    "errorPct": 50.7,
+    "hit": false,
+    "inRange": true,
+    "basis": "median of 2 estimators; priors n=1"
+   },
+   {
+    "event": "Bottom 2018",
+    "date": "2018-12-15",
+    "actual": 3169.53,
+    "predicted": 2516.63,
+    "rangeLow": 2437.87,
+    "rangeHigh": 4252.32,
+    "errorPct": 20.6,
+    "hit": false,
+    "inRange": true,
+    "basis": "median of 3 estimators; priors n=2"
+   },
+   {
+    "event": "Bottom 2022",
+    "date": "2022-11-17",
+    "actual": 15480.69,
+    "predicted": 14761.44,
+    "rangeLow": 11002.67,
+    "rangeHigh": 17729.32,
+    "errorPct": 4.6,
+    "hit": true,
+    "inRange": true,
+    "basis": "median of 3 estimators; priors n=3"
+   }
+  ],
+  "tested": 3,
+  "hits": 1,
+  "accuracy": 0.3333333333333333,
+  "passed70": false,
+  "caveat": "Walk-forward, n=3. With so few cycles this is a sanity check, not statistical validation."
+ },
+ "cycles": [
+  {
+   "topDate": "2011-06-04",
+   "topPrice": 31.91,
+   "bottomDate": "2011-11-12",
+   "bottomPrice": 1.994,
+   "drawdown": 0.937511751801943,
+   "weeksTopToBottom": 23,
+   "weeksHalvingToTop": null
+  },
+  {
+   "topDate": "2013-11-23",
+   "topPrice": 1241.92,
+   "bottomDate": "2015-01-10",
+   "bottomPrice": 157.29,
+   "drawdown": 0.8733493300695697,
+   "weeksTopToBottom": 59,
+   "weeksHalvingToTop": 51
+  },
+  {
+   "topDate": "2017-12-16",
+   "topPrice": 19870.62,
+   "bottomDate": "2018-12-15",
+   "bottomPrice": 3169.53,
+   "drawdown": 0.8404916404218892,
+   "weeksTopToBottom": 52,
+   "weeksHalvingToTop": 75
+  },
+  {
+   "topDate": "2021-11-04",
+   "topPrice": 68978.64,
+   "bottomDate": "2022-11-17",
+   "bottomPrice": 15480.69,
+   "drawdown": 0.7755726990268291,
+   "weeksTopToBottom": 54,
+   "weeksHalvingToTop": 77
+  }
+ ],
+ "current": {
+  "btc": {
+   "prediction": {
+    "estimators": {
+     "prevDrawdown": 28342.31564191611,
+     "fib786": 27025.487919999985,
+     "smaFloor": 50288.963944407136
+    },
+    "bottomPrice": 28342.31564191611,
+    "range": {
+     "low": 27025.487919999985,
+     "high": 50288.963944407136
+    },
+    "window": {
+     "from": "2026-08",
+     "to": "2026-11",
+     "weeksAfterTop": 52
+    },
+    "basis": "median of 3 estimators; priors n=4"
+   },
+   "valuationProxy": {
+    "sma200w": 62185.799750000006,
+    "ratio": 0.9775905471087873,
+    "z": -1.1251455139021473,
+    "label": "FEAR"
+   },
+   "elliott": {
+    "peak": {
+     "i": 719,
+     "t": 1759363200,
+     "price": 126287.29,
+     "type": "peak"
+    },
+    "low": {
+     "i": 11,
+     "t": 1285977600,
+     "price": 0.01,
+     "type": "trough"
+    },
+    "retracedNow": 0.518619452410409,
+    "phase": "Wave A (first leg down)",
+    "fibs": {
+     "1": 0.00999999999476131,
+     "0.236": 96483.49192,
+     "0.382": 78045.54903999998,
+     "0.5": 63143.649999999994,
+     "0.618": 48241.75095999999,
+     "0.786": 27025.487919999985
+    }
+   }
+  },
+  "eth": {
+   "prediction": {
+    "estimators": {
+     "prevDrawdown": 899.811690485292,
+     "fib786": 1754.9757399999999
+    },
+    "bottomPrice": 899.811690485292,
+    "range": {
+     "low": 899.811690485292,
+     "high": 1754.9757399999999
+    },
+    "window": {
+     "from": "2026-02",
+     "to": "2026-05",
+     "weeksAfterTop": 32
+    },
+    "basis": "median of 2 estimators; priors n=1"
+   },
+   "valuationProxy": {
+    "sma200w": 2477.32895,
+    "ratio": 0.6577648882680679,
+    "z": -1.5723311693063935,
+    "label": "EXTREME FEAR"
+   },
+   "elliott": {
+    "peak": {
+     "i": 244,
+     "t": 1755734400,
+     "price": 4955.89,
+     "type": "peak"
+    },
+    "low": {
+     "i": 78,
+     "t": 1655337600,
+     "price": 883.48,
+     "type": "trough"
+    },
+    "retracedNow": 0.816811175692035,
+    "phase": "Wave A (first leg down)",
+    "fibs": {
+     "1": 883.48,
+     "0.236": 3994.8012400000002,
+     "0.382": 3400.22938,
+     "0.5": 2919.6850000000004,
+     "0.618": 2439.14062,
+     "0.786": 1754.9757399999999
+    }
+   }
+  },
+  "topTiming": {
+   "weeksObserved": [
+    51,
+    75,
+    77
+   ],
+   "medianWeeks": 75,
+   "projectedTop": "2025-09-27"
+  }
+ }
+}

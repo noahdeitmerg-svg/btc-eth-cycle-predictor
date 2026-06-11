@@ -1,0 +1,33 @@
+// Headless smoke test: exercises every analytics path the dashboard uses.
+import { readFileSync } from 'fs'; import { createRequire } from 'module';
+import { fileURLToPath } from 'url'; import { dirname, join } from 'path';
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const A = createRequire(import.meta.url)(join(__dirname,'../public/src/analytics.js'));
+const load = f => A.parseSeries(JSON.parse(readFileSync(join(__dirname,'../public/data/',f))));
+const btc = load('btc_weekly.json'), eth = load('eth_weekly.json');
+let fails = 0; const ok = (name, cond) => { console.log((cond?'PASS':'FAIL')+' '+name); if(!cond) fails++; };
+
+const cycles = A.cycleStats(btc);
+ok('cycleStats has 4 cycles', cycles.length === 4);
+const erB = A.elliottRead(btc), erE = A.elliottRead(eth);
+ok('elliott BTC peak found', erB && erB.cyclePeak.price > 60000);
+ok('elliott ETH peak found', erE && erE.cyclePeak.price > 3000);
+const valB = A.valuationProxy(btc), valE = A.valuationProxy(eth);
+ok('valuation proxies finite', isFinite(valB.z) && isFinite(valE.z));
+const predB = A.predictBottom(btc, cycles);
+ok('BTC prediction range sane', predB.range.low > 5000 && predB.range.low < predB.range.high);
+ok('BTC window exists', !!predB.window);
+const predE = A.predictBottom(eth, [{topDate:'2021-11-04',topPrice:4865.94,bottomDate:'2022-06-16',bottomPrice:883.48,drawdown:1-883.48/4865.94,weeksTopToBottom:32,weeksHalvingToTop:null}]);
+ok('ETH prediction sane', predE && predE.range.low > 100);
+const rb = A.rainbowBands(btc);
+ok('rainbow quantiles ordered', rb.quantiles.p10 < rb.quantiles.p25 && rb.quantiles.p75 < rb.quantiles.p90);
+const bt = A.backtest(btc);
+ok('backtest tested 3 bottoms', bt.tested === 3);
+ok('accuracy in [0,1]', bt.accuracy >= 0 && bt.accuracy <= 1);
+console.log('  -> accuracy '+(bt.accuracy*100).toFixed(0)+'%, inRange '+bt.results.filter(r=>r.inRange).length+'/'+bt.tested);
+const tt = A.topTiming(cycles);
+ok('topTiming projects near actual top', Math.abs(Date.parse(tt.projectedTop) - Date.parse('2025-10-02'))/86400000 < 60);
+const m200 = A.sma(btc, 200); ok('sma200 tail non-null', m200[m200.length-1] > 0);
+ok('fibs finite', Object.values(erB.fibs).every(isFinite));
+console.log(fails ? '\n'+fails+' FAILURES' : '\nALL CHECKS PASSED');
+process.exit(fails ? 1 : 0);

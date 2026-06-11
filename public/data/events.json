@@ -1,0 +1,27 @@
+{
+ "bitcoin_events": [
+  {"date": "2012-11-28", "type": "halving", "name": "Halving 1", "description": "Block reward 50 -> 25 BTC", "block": 210000},
+  {"date": "2016-07-09", "type": "halving", "name": "Halving 2", "description": "25 -> 12.5 BTC", "block": 420000},
+  {"date": "2020-05-11", "type": "halving", "name": "Halving 3", "description": "12.5 -> 6.25 BTC", "block": 630000},
+  {"date": "2024-04-20", "type": "halving", "name": "Halving 4", "description": "6.25 -> 3.125 BTC", "block": 840000},
+  {"date": "2013-11-23", "type": "top", "name": "Top 2013", "price": 1241.92},
+  {"date": "2015-01-10", "type": "bottom", "name": "Bottom 2015", "price": 157.29},
+  {"date": "2017-12-16", "type": "top", "name": "Top 2017", "price": 19870.62},
+  {"date": "2018-12-15", "type": "bottom", "name": "Bottom 2018", "price": 3169.53},
+  {"date": "2021-11-04", "type": "top", "name": "Top 2021", "price": 68978.64},
+  {"date": "2022-11-17", "type": "bottom", "name": "Bottom 2022 (FTX)", "price": 15480.69},
+  {"date": "2025-10-02", "type": "top", "name": "Top 2025", "price": 126287.29}
+ ],
+ "ethereum_events": [
+  {"date": "2015-07-30", "type": "launch", "name": "Ethereum Launch"},
+  {"date": "2021-11-04", "type": "top", "name": "Top 2021", "price": 4865.94},
+  {"date": "2022-06-16", "type": "bottom", "name": "Bottom 2022", "price": 883.48},
+  {"date": "2022-09-15", "type": "event", "name": "The Merge (PoS)"},
+  {"date": "2025-08-21", "type": "top", "name": "Top 2025", "price": 4955.89}
+ ],
+ "macro_events": [
+  {"date": "2020-03-12", "type": "crash", "name": "COVID Crash", "description": "BTC -50% in days"},
+  {"date": "2022-11-08", "type": "crash", "name": "FTX Implosion"}
+ ],
+ "note": "Tops/bottoms computed from CryptoCompare weekly OHLC (extremes of weekly high/low), not hand-entered."
+}
