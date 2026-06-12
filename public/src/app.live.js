@@ -57,11 +57,19 @@ function legendTitle(text) {
   return { legend: { labels: { color: '#e0e0e0', boxWidth: 18 } }, title: { display: true, text: text, color: COL.cyan } };
 }
 
-function renderPriceChart(id, series, name, color, fibs, sma200) {
-  const labels = series.map(p => A.fmtDate(p.t));
+function renderPriceChart(id, series, name, color, fibs, sma200, tf) {
+  tf = tf || 'weekly';
+  const labels = series.map(p => fmtBar(p.t, tf));
+  const grad = ctx => {
+    const area = ctx.chart.chartArea;
+    if (!area) return 'transparent';
+    const g = ctx.chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+    g.addColorStop(0, color + '4d'); g.addColorStop(1, color + '00');
+    return g;
+  };
   const ds = [
-    { label: name + ' Wochenschluss', data: series.map(p => p.c), borderColor: color, backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.2 },
-    { label: '200W-SMA', data: sma200, borderColor: COL.amber, borderWidth: 1.5, pointRadius: 0, borderDash: [6, 4] }
+    { label: name + ' Schlusskurs', data: series.map(p => p.c), borderColor: color, backgroundColor: grad, fill: true, borderWidth: 2, pointRadius: 0, tension: 0.2 },
+    { label: 'SMA', data: sma200, borderColor: COL.amber, borderWidth: 1.5, pointRadius: 0, borderDash: [6, 4] }
   ];
   for (const pair of Object.entries(fibs)) {
     const f = +pair[0], price = pair[1];
@@ -270,19 +278,11 @@ async function init() {
       '<br><br><strong>Würde man allein darauf handeln? Nein.</strong> 3 Zyklen sind keine Statistik — und die aktuelle 3/3-Quote entstand nach Verbesserungen, die an genau diesen 3 Böden gemessen wurden. Der nächste Boden ist der erste echte Test. ' +
       'Sinnvoller Einsatz: als Zonen-Landkarte (Spannen + Zeitfenster + Bewertungs-Ampel) neben eigener Recherche, Positionsgrößen-Disziplin und Zeit-Diversifikation (z. B. gestaffelte Käufe statt Einmal-Timing).';
 
-    const m200b = A.sma(btc, 200), m200e = A.sma(eth, 200);
-    renderPrice('btcChart', btc.slice(-280), 'Bitcoin', COL.cyan, erB.fibs, m200b.slice(-280), 'line');
-    renderPrice('ethChart', eth.slice(-280), 'Ethereum', COL.pink, erE.fibs, m200e.slice(-280), 'line');
-    // Elliott-Wellen: Zaehlung + Charts + Analyse-Text
-    const ewB = A.elliottWaves(btc), ewE = A.elliottWaves(eth);
-    if (ewB) {
-      renderElliott('btcElliott', btc, ewB, 'Bitcoin', COL.cyan);
-      $('elliott-btc-text').innerHTML = '<strong>BTC: ' + ewB.phase + '</strong> — ' + fmtPct(ewB.retracedNow * 100) + ' der Impulsbewegung (Welle 1–5: ' + fmtK(ewB.impulse[0].price) + ' → ' + fmtK(ewB.invalidation) + ') zurückgegeben. Nächste Fib-Ziele: 0,618 = ' + fmtK(ewB.fibs[0.618]) + ' · 0,786 = ' + fmtK(ewB.fibs[0.786]) + '. Zählung ungültig über ' + fmtK(ewB.invalidation) + '.';
-    }
-    if (ewE) {
-      renderElliott('ethElliott', eth, ewE, 'Ethereum', COL.green);
-      $('elliott-eth-text').innerHTML = '<strong>ETH: ' + ewE.phase + '</strong> — ' + fmtPct(ewE.retracedNow * 100) + ' zurückgegeben (kurze Datenhistorie: Zählung beginnt ' + A.fmtDate(ewE.impulse[0].t) + '). Fib-Ziele: 0,618 = ' + fmtK(ewE.fibs[0.618]) + ' · 0,786 = ' + fmtK(ewE.fibs[0.786]) + '. Zählung ungültig über ' + fmtK(ewE.invalidation) + '.';
-    }
+    // Hero (einfache Sprache) + Zeitebenen: Charts & Wellen-Analyse via applyTimeframe
+    renderHero(erB, predB, valB, erE, predE);
+    TF.cache['btc_weekly'] = btc; TF.cache['eth_weekly'] = eth;
+    setupTFBar();
+    await applyTimeframe('weekly');
     setupModeToggles();
     setupTheme();
     renderCycleComparison('cycleChart', btc);
@@ -301,6 +301,69 @@ async function init() {
     console.error(err);
     $('loading').textContent = 'Fehler beim Laden: ' + err.message + ' — Seite über http aufrufen (python -m http.server), file:// blockiert fetch.';
   }
+}
+
+/* ---------- Multi-Timeframe ---------- */
+const TF = {
+  current: 'weekly',
+  cache: {},
+  meta: { '4h': { label: '4h-Bars (90 Tage)' }, daily: { label: 'Tagesbars (1 Jahr)' }, weekly: { label: 'Wochenbars (volle Historie)' }, monthly: { label: 'Monatsbars (volle Historie)' } }
+};
+function fmtBar(t, tf) {
+  const d = new Date(t * 1000);
+  if (tf === '4h') return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  if (tf === 'monthly') return d.toLocaleDateString('de-DE', { month: '2-digit', year: 'numeric' });
+  return A.fmtDate(t);
+}
+async function getTF(sym, tf) {
+  const key = sym + '_' + tf;
+  if (!TF.cache[key]) {
+    const j = await loadJSON('data/' + key + '.json');
+    TF.cache[key] = A.parseSeries(j);
+  }
+  return TF.cache[key];
+}
+async function applyTimeframe(tf) {
+  TF.current = tf;
+  document.querySelectorAll('.tf-btn').forEach(b => b.classList.toggle('active', b.dataset.tf === tf));
+  const series = await Promise.all([getTF('btc', tf), getTF('eth', tf)]);
+  const btcS = series[0], ethS = series[1];
+  const view = tf === 'weekly' ? btcS.slice(-280) : btcS;
+  const viewE = tf === 'weekly' ? ethS.slice(-280) : ethS;
+  const smaN = Math.min(200, Math.floor(btcS.length / 2));
+  const ewB = A.elliottWaves(btcS), ewE = A.elliottWaves(ethS);
+  renderPrice('btcChart', view, 'Bitcoin', COL.cyan, ewB ? ewB.fibs : {}, A.sma(btcS, smaN).slice(-view.length), priceChartState.btcChart ? priceChartState.btcChart.mode : 'line', tf);
+  renderPrice('ethChart', viewE, 'Ethereum', COL.pink, ewE ? ewE.fibs : {}, A.sma(ethS, smaN).slice(-viewE.length), priceChartState.ethChart ? priceChartState.ethChart.mode : 'line', tf);
+  if (ewB) {
+    renderElliott('btcElliott', btcS, ewB, 'Bitcoin', COL.cyan, tf);
+    const rTxt = ew => ew.retracedNow >= 1 ? 'die komplette Aufwärtsbewegung dieser Zeitebene wurde abverkauft (Kurs unter dem Start-Tief)' : fmtPct(ew.retracedNow * 100) + ' der Aufwärtsbewegung dieser Zeitebene zurückgegeben';
+    $('elliott-btc-text').innerHTML = '<strong>BTC · ' + TF.meta[tf].label + ': ' + ewB.phase + '</strong> — ' + rTxt(ewB) + '. Fib-Ziele: 0,618 = ' + fmtK(ewB.fibs[0.618]) + ' · 0,786 = ' + fmtK(ewB.fibs[0.786]) + '. Zählung ungültig über ' + fmtK(ewB.invalidation) + '.';
+  }
+  if (ewE) {
+    renderElliott('ethElliott', ethS, ewE, 'Ethereum', COL.green, tf);
+    const rTxtE = ew => ew.retracedNow >= 1 ? 'komplette Aufwärtsbewegung abverkauft (Kurs unter dem Start-Tief)' : fmtPct(ew.retracedNow * 100) + ' zurückgegeben';
+    $('elliott-eth-text').innerHTML = '<strong>ETH · ' + TF.meta[tf].label + ': ' + ewE.phase + '</strong> — ' + rTxtE(ewE) + '. Fib-Ziele: 0,618 = ' + fmtK(ewE.fibs[0.618]) + ' · 0,786 = ' + fmtK(ewE.fibs[0.786]) + '. Zählung ungültig über ' + fmtK(ewE.invalidation) + '.';
+  }
+  if (window.applyLang) window.applyLang();
+}
+function setupTFBar() {
+  document.querySelectorAll('.tf-btn').forEach(b => b.addEventListener('click', () => applyTimeframe(b.dataset.tf)));
+}
+
+/* Hero: Auf einen Blick — einfache Sprache, aus den Modellwerten generiert */
+function renderHero(erB, predB, valB, erE, predE) {
+  const dd = (er) => (1 - er.lastClose / er.cyclePeak.price) * 100;
+  const zoneState = (er, pred) => er.lastClose < pred.coreZone.low ? 'below' : (er.lastClose <= pred.coreZone.high ? 'zone' : 'wait');
+  const stateTxt = { wait: 'NOCH WARTEN — über der Bodenzone', zone: 'IN DER BODENZONE des Modells', below: 'UNTER der Bodenzone — tiefer als das Modell erwartet' };
+  const sB = zoneState(erB, predB), sE = zoneState(erE, predE);
+  $('hero-btc-line').textContent = fmtUsd(erB.lastClose) + ' · ' + fmtPct(dd(erB)) + ' unter dem Hoch';
+  $('hero-btc-sub').textContent = 'Das Modell erwartet den Boden zwischen ' + fmtK(predB.coreZone.low) + ' und ' + fmtK(predB.coreZone.high) + ' (Zeitfenster ' + predB.window.from + ' bis ' + predB.window.to + '). Bewertung aktuell: ' + deLabel(valB.label).toLowerCase() + '.';
+  $('hero-btc-badge').textContent = stateTxt[sB];
+  $('hero-btc-badge').className = 'hero-badge ' + sB;
+  $('hero-eth-line').textContent = fmtUsd(erE.lastClose) + ' · ' + fmtPct(dd(erE)) + ' unter dem Hoch';
+  $('hero-eth-sub').textContent = 'Modell-Bodenzone: ' + fmtK(predE.coreZone.low) + ' bis ' + fmtK(predE.coreZone.high) + '. ETH ist bereits tief gefallen — der Boden könnte gesetzt sein. Achtung: nur 1 Vorzyklus, schwächer belegt als BTC.';
+  $('hero-eth-badge').textContent = stateTxt[sE];
+  $('hero-eth-badge').className = 'hero-badge ' + sE;
 }
 
 /* Elliott-Wellen-Chart: Kurs + nummerierte Wellenpunkte (1-5, A-B-C) + Invalidierungslinie */
@@ -330,10 +393,11 @@ const waveLabelPlugin = {
 };
 if (typeof Chart !== 'undefined') Chart.register(waveLabelPlugin);
 
-function renderElliott(id, series, ew, name, color) {
+function renderElliott(id, series, ew, name, color, tf) {
+  tf = tf || 'weekly';
   const start = ew.impulse[0].t;
   const seg = series.filter(p => p.t >= start);
-  const labels = seg.map(p => A.fmtDate(p.t));
+  const labels = seg.map(p => fmtBar(p.t, tf));
   const inv = ew.invalidation;
   const ds = [
     { label: name + ' Wochenschluss', data: seg.map(p => p.c), borderColor: color, borderWidth: 2, pointRadius: 0, tension: 0.15 },
@@ -343,33 +407,34 @@ function renderElliott(id, series, ew, name, color) {
   ];
   mkChart(id, { type: 'line', data: { labels: labels, datasets: ds }, options: { responsive: true, maintainAspectRatio: false, plugins: legendTitle(name + ' — automatische Wellen-Zählung (Heuristik)'), scales: axStyle() } });
   const pts = [];
-  for (const p of ew.impulse) pts.push({ dateLabel: A.fmtDate(p.t), price: p.price, label: p.label, kind: (+p.label % 2 === 1 || p.label === '5') ? 'peak' : 'trough', abc: false });
-  for (const p of ew.correction) pts.push({ dateLabel: A.fmtDate(p.t), price: p.price, label: p.label, kind: p.label === 'B' ? 'peak' : 'trough', abc: true });
+  for (const p of ew.impulse) pts.push({ dateLabel: fmtBar(p.t, tf), price: p.price, label: p.label, kind: (+p.label % 2 === 1 || p.label === '5') ? 'peak' : 'trough', abc: false });
+  for (const p of ew.correction) pts.push({ dateLabel: fmtBar(p.t, tf), price: p.price, label: p.label, kind: p.label === 'B' ? 'peak' : 'trough', abc: true });
   charts[id].$waveLabels = { points: pts, labels: labels };
   charts[id].update();
 }
 
 /* Kerzen/Linien-Umschalter fuer die Preischarts */
 const priceChartState = {};
-function renderPrice(id, series, name, color, fibs, sma200, mode) {
-  priceChartState[id] = { series, name, color, fibs, sma200, mode };
+function renderPrice(id, series, name, color, fibs, sma200, mode, tf) {
+  tf = tf || 'weekly';
+  priceChartState[id] = { series, name, color, fibs, sma200, mode, tf };
   if (mode === 'candle' && typeof Chart !== 'undefined' && Chart.registry.controllers.get('candlestick')) {
-    const labels = series.map(p => A.fmtDate(p.t));
+    const labels = series.map(p => fmtBar(p.t, tf));
     mkChart(id, {
       type: 'candlestick',
       data: { labels: labels, datasets: [{
-        label: name + ' (Wochenkerzen)',
+        label: name + ' (Kerzen)',
         data: series.map((p, i) => ({ x: i, o: p.o, h: p.h, l: p.l, c: p.c })),
         borderColors: { up: '#34d399', down: '#f87171', unchanged: '#8b93a7' },
         backgroundColors: { up: 'rgba(52,211,153,0.85)', down: 'rgba(248,113,113,0.85)', unchanged: '#8b93a7' }
       }] },
       options: { responsive: true, maintainAspectRatio: false, parsing: false,
-        plugins: legendTitle(name + ' — Wochenkerzen (O/H/L/C)'),
+        plugins: legendTitle(name + ' — Kerzen (O/H/L/C), ' + TF.meta[tf].label),
         scales: { y: { type: 'logarithmic', ticks: { color: COL.grey, callback: v => typeof v === 'number' ? fmtK(v) : v }, grid: { color: 'rgba(128,140,160,0.10)' } },
                   x: { type: 'linear', min: 0, max: series.length - 1, ticks: { color: COL.grey, maxTicksLimit: 10, callback: v => labels[Math.round(v)] || '' }, grid: { display: false } } } }
     });
   } else {
-    renderPriceChart(id, series, name, color, fibs, sma200);
+    renderPriceChart(id, series, name, color, fibs, sma200, tf);
   }
 }
 function setupModeToggles() {
@@ -379,7 +444,7 @@ function setupModeToggles() {
     b.addEventListener('click', () => {
       const s = priceChartState[chartId];
       const next = s.mode === 'candle' ? 'line' : 'candle';
-      renderPrice(chartId, s.series, s.name, s.color, s.fibs, s.sma200, next);
+      renderPrice(chartId, s.series, s.name, s.color, s.fibs, s.sma200, next, s.tf);
       b.textContent = next === 'candle' ? 'Linie' : 'Kerzen';
     });
   }

@@ -1,7 +1,7 @@
 name: Täglicher Daten-Refresh + Deploy + Alarm
 on:
   schedule:
-    - cron: '20 6 * * *'   # täglich 06:20 UTC
+    - cron: '20 */4 * * *'   # alle 4 Stunden (4h-Charts bleiben frisch)
   workflow_dispatch: {}
 
 permissions:

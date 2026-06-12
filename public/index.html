@@ -144,6 +144,20 @@
     .verdict { border-left: 3px solid var(--pos); background: rgba(0,0,0,0.26); border-radius: 14px; padding: 14px 18px; margin-top: 14px; font-size: .92em; color: #ccd6cf; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
     .verdict strong { color: var(--txt); }
     #backtest-summary { font-size: .98em; line-height: 1.8; margin: 6px 0 2px; }
+    /* Hero: Auf einen Blick */
+    .hero { text-align: center; }
+    .hero-line { font-size: clamp(1.15em, 2.6vw, 1.5em); font-weight: 750; letter-spacing: -0.3px; margin: 6px 0 4px; }
+    .hero-sub { color: var(--muted); font-size: .92em; line-height: 1.6; max-width: 560px; margin: 0 auto; }
+    .hero-badge { display: inline-block; margin-top: 12px; padding: 7px 18px; border-radius: 999px; font-weight: 700; font-size: .88em; border: 1px solid; }
+    .hero-badge.wait { color: var(--warn); border-color: rgba(251,191,36,0.45); background: rgba(251,191,36,0.08); box-shadow: 0 0 18px rgba(251,191,36,0.15); }
+    .hero-badge.zone { color: var(--pos); border-color: rgba(52,211,153,0.5); background: rgba(52,211,153,0.10); box-shadow: 0 0 22px rgba(52,211,153,0.25); animation: dotPulse 2.6s ease-in-out infinite; }
+    .hero-badge.below { color: var(--accent2); border-color: rgba(34,211,238,0.5); background: rgba(34,211,238,0.10); }
+    /* Zeitebenen-Leiste */
+    .tf-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 16px; padding: 10px 16px; border: 1px solid var(--stroke-soft); border-radius: 999px; background: var(--glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); width: fit-content; }
+    .tf-label { color: var(--muted); font-size: .82em; margin-right: 4px; }
+    .tf-btn { background: transparent; color: var(--muted); border: 1px solid transparent; padding: 6px 16px; border-radius: 999px; cursor: pointer; font-size: .85em; font-weight: 650; transition: all .18s; }
+    .tf-btn:hover { color: var(--txt); }
+    .tf-btn.active { color: #fff; background: linear-gradient(90deg, rgba(110,139,255,0.35), rgba(34,211,238,0.30)); border-color: rgba(110,139,255,0.5); box-shadow: 0 0 16px rgba(110,139,255,0.3); }
     body[data-theme="light"] {
       --bg: #eef1f7;
       --glass: rgba(255,255,255,0.62);
@@ -184,12 +198,35 @@
       <span class="meta">Zyklusstruktur · Bewertung · Halving-Muster · Makro (FRED) · walk-forward backtested</span>
     </div>
 
+    <div class="grid hero-grid">
+      <div class="card hero" id="hero-btc">
+        <span class="kicker">Auf einen Blick · Bitcoin</span>
+        <div class="hero-line" id="hero-btc-line">—</div>
+        <div class="hero-sub" id="hero-btc-sub">—</div>
+        <div class="hero-badge" id="hero-btc-badge">—</div>
+      </div>
+      <div class="card hero" id="hero-eth">
+        <span class="kicker">Auf einen Blick · Ethereum</span>
+        <div class="hero-line" id="hero-eth-line">—</div>
+        <div class="hero-sub" id="hero-eth-sub">—</div>
+        <div class="hero-badge" id="hero-eth-badge">—</div>
+      </div>
+    </div>
+
+    <div class="tf-bar" id="tf-bar">
+      <span class="tf-label">Zeitebene für Charts &amp; Wellen-Analyse:</span>
+      <button class="tf-btn" data-tf="4h">4h</button>
+      <button class="tf-btn" data-tf="daily">1T</button>
+      <button class="tf-btn active" data-tf="weekly">1W</button>
+      <button class="tf-btn" data-tf="monthly">1M</button>
+    </div>
 
     <div class="note howto">
-      <strong>So liest du das:</strong> Status zeigt, wie tief die Korrektur ist und ob die Bewertung historisch billig/teuer ist.
-      Die Kernzone ist die kleinstmögliche Zone, die rückwirkend alle Böden abgedeckt hätte — kein exakter Preis.
-      Backtest und Charts zeigen ungeschönt, wie das Modell historisch abgeschnitten hat.
+      <strong>So liest du das:</strong> Oben steht in einfacher Sprache, wo BTC und ETH gerade stehen.
+      Die Kernzone ist die kleinstmögliche Zone, die rückwirkend alle früheren Markt-Tiefs abgedeckt hätte — kein exakter Preis.
+      Mit der Zeitebenen-Leiste stellst du Charts und Wellen-Analyse auf 4 Stunden, Tage, Wochen oder Monate um.
     </div>
+
 
     <div class="loading" id="loading">Daten werden geladen, Modelle berechnet …</div>
 
