@@ -331,7 +331,9 @@ async function applyTimeframe(tf) {
   const view = tf === 'weekly' ? btcS.slice(-280) : btcS;
   const viewE = tf === 'weekly' ? ethS.slice(-280) : ethS;
   const smaN = Math.min(200, Math.floor(btcS.length / 2));
-  const ewB = A.elliottWaves(btcS), ewE = A.elliottWaves(ethS);
+  // Zeitebenen-Lookback: Wieviele Bars die Wellen-Zaehlung betrachtet (Struktur je TF unterschiedlich)
+  const ewBars = { '4h': 180, daily: 180, weekly: 160, monthly: 90 }[tf];
+  const ewB = A.elliottWaves(btcS, { bars: ewBars }), ewE = A.elliottWaves(ethS, { bars: ewBars });
   renderPrice('btcChart', view, 'Bitcoin', COL.cyan, ewB ? ewB.fibs : {}, A.sma(btcS, smaN).slice(-view.length), priceChartState.btcChart ? priceChartState.btcChart.mode : 'line', tf);
   renderPrice('ethChart', viewE, 'Ethereum', COL.pink, ewE ? ewE.fibs : {}, A.sma(ethS, smaN).slice(-viewE.length), priceChartState.ethChart ? priceChartState.ethChart.mode : 'line', tf);
   if (ewB) {
