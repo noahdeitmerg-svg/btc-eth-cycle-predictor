@@ -4,8 +4,8 @@
  "series": {
   "vix": {
    "fred_id": "VIXCLS",
-   "current": 16.73,
-   "current_date": "2026-07-16",
+   "current": 18.77,
+   "current_date": "2026-07-17",
    "at_btc_bottoms": {
     "2015-01-14": 21.48,
     "2018-12-15": 21.63,
