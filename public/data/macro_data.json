@@ -34,8 +34,8 @@
   },
   "yield_10y2y": {
    "fred_id": "T10Y2Y",
-   "current": 0.34,
-   "current_date": "2026-07-23",
+   "current": 0.36,
+   "current_date": "2026-07-24",
    "at_btc_bottoms": {
     "2015-01-14": 1.35,
     "2018-12-15": 0.16,
