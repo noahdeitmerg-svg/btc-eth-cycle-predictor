@@ -6,7 +6,7 @@
   "errorPct": 50.8,
   "inCore": false
  },
- "generated": "2026-09-03T04:39:56.103Z",
+ "generated": "2026-09-03T12:52:15.567Z",
  "backtest": {
   "tolerance": 0.15,
   "leadWeeks": 8,
@@ -111,7 +111,7 @@
      "prevDrawdown": 28342.31564191611,
      "decayDrawdown": 35907.51170633078,
      "fib786": 27025.487919999985,
-     "smaFloor": 52704.65593178436
+     "smaFloor": 52707.85514052458
     },
     "bottomPrice": 32124.913674123443,
     "coreZone": {
@@ -120,7 +120,7 @@
     },
     "range": {
      "low": 27025.487919999985,
-     "high": 52704.65593178436
+     "high": 52707.85514052458
     },
     "window": {
      "from": "2026-08",
@@ -130,9 +130,9 @@
     "basis": "median of 4 estimators; priors n=4"
    },
    "valuationProxy": {
-    "sma200w": 65172.970819000046,
-    "ratio": 1.190080320496736,
-    "z": -0.7023632568791996,
+    "sma200w": 65176.92686300004,
+    "ratio": 1.202147486405644,
+    "z": -0.6779087844350185,
     "label": "FEAR"
    },
    "elliott": {
@@ -148,7 +148,7 @@
      "price": 0.01,
      "type": "trough"
     },
-    "retracedNow": 0.3858363249252022,
+    "retracedNow": 0.3795711745474286,
     "phase": "Wave B/C (correction in progress)",
     "fibs": {
      "1": 0.00999999999476131,
@@ -183,10 +183,10 @@
     "basis": "median of 2 estimators; priors n=1"
    },
    "valuationProxy": {
-    "sma200w": 2503.669984000002,
-    "ratio": 0.95763064434294,
-    "z": -0.5037890348026479,
-    "label": "FEAR"
+    "sma200w": 2503.765238000002,
+    "ratio": 0.9652030722858045,
+    "z": -0.4813962193327543,
+    "label": "NEUTRAL"
    },
    "elliott": {
     "peak": {
@@ -201,7 +201,7 @@
      "price": 883.48,
      "type": "trough"
     },
-    "retracedNow": 0.6282026858788776,
+    "retracedNow": 0.6235246696673469,
     "phase": "Wave B/C (correction in progress)",
     "fibs": {
      "1": 883.48,
